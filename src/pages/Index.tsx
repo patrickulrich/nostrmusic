@@ -315,20 +315,20 @@ const Index = () => {
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">
             <h1 className="text-4xl font-bold flex items-center gap-3">
               <Music className="h-10 w-10 text-primary" />
               Discover Music
             </h1>
-            <div className="flex gap-3">
-              <Button asChild variant="outline" size="lg">
-                <Link to="/radio" className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+                <Link to="/radio" className="flex items-center justify-center gap-2">
                   <Radio className="h-5 w-5" />
                   Radio
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link to="/party-view" className="flex items-center gap-2">
+              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+                <Link to="/party-view" className="flex items-center justify-center gap-2">
                   <Music className="h-5 w-5" />
                   Peachy Radio
                 </Link>

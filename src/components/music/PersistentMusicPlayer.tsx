@@ -1,5 +1,5 @@
-import { useRef, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useRef, useEffect, useCallback, useState } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -19,12 +19,14 @@ import {
   Zap,
   Heart,
   X,
-  Music
+  Music,
+  ChevronUp
 } from 'lucide-react';
 
 export function PersistentMusicPlayer() {
   const location = useLocation();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { 
     currentTrack, 
     isPlaying, 
@@ -265,68 +267,71 @@ export function PersistentMusicPlayer() {
 
   const hasNavigation = playlist.length > 1;
 
-  // Mobile layout (twice the height with different structure)
+  // Responsive layout - full bar on desktop, expandable on mobile
   if (isMobile) {
+    // Mobile: Expandable popup design
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t safe-area-inset-bottom">
         <Card className="rounded-none border-0 shadow-lg">
           <CardContent className="p-3">
-            {/* Mobile: Top section with artwork, track info, and action buttons */}
-            <div className="flex items-center gap-3 mb-3">
-              {/* Large Artwork */}
-              <div className="w-14 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                {currentTrack.image ? (
-                  <img
-                    src={currentTrack.image}
-                    alt={currentTrack.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Music className="h-7 w-7 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-              
-              {/* Track Info */}
-              <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-sm truncate">{currentTrack.title}</h3>
-                <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
-                {hasNavigation && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {currentIndex + 1} of {playlist.length}
-                  </p>
-                )}
+            {/* Mobile main player bar */}
+            <div className="flex items-center gap-3">
+              {/* Track artwork and info */}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 cursor-pointer"
+                     onClick={() => setIsExpanded(!isExpanded)}>
+                  {currentTrack.image ? (
+                    <img
+                      src={currentTrack.image}
+                      alt={currentTrack.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Music className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                
+                <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+                  <h3 className="font-semibold text-sm truncate">{currentTrack.title}</h3>
+                  <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+                </div>
               </div>
 
-              {/* Action Buttons: Heart, Zap, X */}
-              <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Mobile essential controls */}
+              <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleVoteTrack}
-                  className="h-9 w-9 p-0"
-                  title="Vote for this track"
+                  onClick={togglePlay}
+                  disabled={isLoading}
+                  className="h-10 w-10 p-0"
                 >
-                  <Heart className="h-4 w-4" />
+                  {isLoading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  ) : isPlaying ? (
+                    <Pause className="h-4 w-4" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
                 </Button>
-                
-                <WavlakeZapDialog track={currentTrack}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 w-9 p-0"
-                    title="Zap artist"
-                  >
-                    <Zap className="h-4 w-4" />
-                  </Button>
-                </WavlakeZapDialog>
-                
+
+                {/* Expand/Collapse button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronUp className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </Button>
+
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={closePlayer}
-                  className="h-9 w-9 p-0"
+                  className="h-8 w-8 p-0"
                   title="Close player"
                 >
                   <X className="h-4 w-4" />
@@ -334,127 +339,146 @@ export function PersistentMusicPlayer() {
               </div>
             </div>
 
-            {/* Mobile: Bottom section with controls, scrubber, and volume */}
-            <div className="space-y-2">
-              {/* Progress Bar */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground w-8 text-right flex-shrink-0">
-                  {formatTime(currentTime)}
-                </span>
-                <Slider
-                  value={[currentTime]}
-                  max={duration || 100}
-                  step={1}
-                  onValueChange={handleSeek}
-                  className="flex-1 min-w-0"
-                />
-                <span className="text-xs text-muted-foreground w-8 flex-shrink-0">
-                  {formatTime(duration)}
-                </span>
-              </div>
-
-              {/* Controls and Volume */}
-              <div className="flex items-center justify-between">
-                {/* Playback Controls */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {hasNavigation && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={previousTrack}
-                      className="h-9 w-9 p-0"
-                    >
-                      <SkipBack className="h-4 w-4" />
-                    </Button>
-                  )}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={togglePlay}
-                    disabled={isLoading}
-                    className="h-11 w-11 p-0"
+            {/* Mobile expanded controls panel */}
+            {isExpanded && (
+              <div className="mt-4 space-y-4 border-t pt-4">
+                {/* Mobile expanded track info with clickable links */}
+                <div className="text-center space-y-1">
+                  <Link
+                    to={`/wavlake/${currentTrack.id}`}
+                    className="font-semibold text-sm hover:text-primary transition-colors block"
                   >
-                    {isLoading ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                    ) : isPlaying ? (
-                      <Pause className="h-5 w-5" />
-                    ) : (
-                      <Play className="h-5 w-5" />
-                    )}
-                  </Button>
-                  
-                  {hasNavigation && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={nextTrack}
-                      className="h-9 w-9 p-0"
+                    {currentTrack.title}
+                  </Link>
+                  {currentTrack.artistId && (
+                    <Link
+                      to={`/wavlake/artist/${currentTrack.artistId}`}
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors block"
                     >
-                      <SkipForward className="h-4 w-4" />
-                    </Button>
+                      {currentTrack.artist}
+                    </Link>
+                  )}
+                  {!currentTrack.artistId && (
+                    <p className="text-xs text-muted-foreground">{currentTrack.artist}</p>
+                  )}
+                  {hasNavigation && (
+                    <p className="text-xs text-muted-foreground">
+                      {currentIndex + 1} of {playlist.length}
+                    </p>
                   )}
                 </div>
 
-                {/* Volume Control */}
-                <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleMute}
-                    className="h-7 w-7 p-0"
-                  >
-                    {isMuted || volume === 0 ? (
-                      <VolumeX className="h-3 w-3" />
-                    ) : (
-                      <Volume2 className="h-3 w-3" />
-                    )}
-                  </Button>
+                {/* Progress bar */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-10 text-right">
+                    {formatTime(currentTime)}
+                  </span>
                   <Slider
-                    value={[isMuted ? 0 : volume]}
-                    max={1}
-                    step={0.01}
-                    onValueChange={handleVolumeChange}
-                    className="w-16"
+                    value={[currentTime]}
+                    max={duration || 100}
+                    step={1}
+                    onValueChange={handleSeek}
+                    className="flex-1"
                   />
+                  <span className="text-xs text-muted-foreground w-10">
+                    {formatTime(duration)}
+                  </span>
+                </div>
+
+                {/* Full controls row */}
+                <div className="flex items-center justify-between">
+                  {/* Navigation controls */}
+                  <div className="flex items-center gap-2">
+                    {hasNavigation && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={previousTrack}
+                          className="h-8 w-8 p-0"
+                        >
+                          <SkipBack className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={nextTrack}
+                          className="h-8 w-8 p-0"
+                        >
+                          <SkipForward className="h-4 w-4" />
+                        </Button>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {currentIndex + 1} of {playlist.length}
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Volume control */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleMute}
+                      className="h-8 w-8 p-0"
+                    >
+                      {isMuted || volume === 0 ? (
+                        <VolumeX className="h-4 w-4" />
+                      ) : (
+                        <Volume2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Slider
+                      value={[isMuted ? 0 : volume]}
+                      max={1}
+                      step={0.01}
+                      onValueChange={handleVolumeChange}
+                      className="w-20"
+                    />
+                  </div>
+                </div>
+
+                {/* Action buttons below controls */}
+                <div className="flex items-center justify-center gap-6 pt-2 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleVoteTrack}
+                    className="flex flex-col items-center gap-1 h-auto p-2"
+                    title="Vote for this track"
+                  >
+                    <Heart className="h-5 w-5" />
+                    <span className="text-xs">Vote</span>
+                  </Button>
+                  
+                  <WavlakeZapDialog track={currentTrack}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex flex-col items-center gap-1 h-auto p-2"
+                      title="Zap artist"
+                    >
+                      <Zap className="h-5 w-5" />
+                      <span className="text-xs">Zap</span>
+                    </Button>
+                  </WavlakeZapDialog>
                 </div>
               </div>
-            </div>
-
-            {/* Hidden Audio Element */}
-            <audio
-              ref={audioRef}
-              onLoadStart={handleLoadStart}
-              onLoadedData={handleLoadedData}
-              onLoadedMetadata={() => console.log('Audio metadata loaded')}
-              onCanPlay={handleCanPlay}
-              onCanPlayThrough={() => console.log('Audio can play through without buffering')}
-              onPlay={() => console.log('Audio play event fired')}
-              onPlaying={() => console.log('Audio is now playing')}
-              onPause={() => console.log('Audio paused')}
-              onTimeUpdate={handleTimeUpdate}
-              onEnded={handleEnded}
-              onError={handleError}
-              onStalled={() => console.log('Audio stalled')}
-              onSuspend={() => console.log('Audio suspended')}
-              onWaiting={() => console.log('Audio waiting for data')}
-              onAbort={() => console.log('Audio loading aborted')}
-              preload="metadata"
-            />
+            )}
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Desktop layout (original single-row layout)
+  // Desktop: Everything on the bar
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t">
       <Card className="rounded-none border-0 shadow-lg">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            {/* Track Info */}
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+        <CardContent className="py-4 pl-4 pr-4">
+          <div className="flex items-center justify-between w-full">
+            {/* Left: Track Info */}
+            <div className="flex items-center gap-3 min-w-0 w-80">
               <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                 {currentTrack.image ? (
                   <img
@@ -470,8 +494,23 @@ export function PersistentMusicPlayer() {
               </div>
               
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-sm truncate">{currentTrack.title}</h3>
-                <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+                <Link
+                  to={`/wavlake/${currentTrack.id}`}
+                  className="font-semibold text-sm truncate hover:text-primary transition-colors block"
+                >
+                  {currentTrack.title}
+                </Link>
+                {currentTrack.artistId && (
+                  <Link
+                    to={`/wavlake/artist/${currentTrack.artistId}`}
+                    className="text-xs text-muted-foreground truncate hover:text-primary transition-colors block"
+                  >
+                    {currentTrack.artist}
+                  </Link>
+                )}
+                {!currentTrack.artistId && (
+                  <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+                )}
                 {hasNavigation && (
                   <p className="text-xs text-muted-foreground">
                     {currentIndex + 1} of {playlist.length}
@@ -480,25 +519,37 @@ export function PersistentMusicPlayer() {
               </div>
             </div>
 
-            {/* Controls */}
-            <div className="flex items-center gap-2">
+            {/* Center: Controls, Scrubber, and Volume */}
+            <div className="flex items-center gap-3 flex-1 justify-center max-w-2xl">
+              {/* Navigation Controls */}
               {hasNavigation && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={previousTrack}
-                  className="h-8 w-8 p-0"
-                >
-                  <SkipBack className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={previousTrack}
+                    className="h-8 w-8 p-0"
+                  >
+                    <SkipBack className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={nextTrack}
+                    className="h-8 w-8 p-0"
+                  >
+                    <SkipForward className="h-4 w-4" />
+                  </Button>
+                </div>
               )}
-              
+
+              {/* Play Control */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={togglePlay}
                 disabled={isLoading}
-                className="h-8 w-8 p-0"
+                className="h-10 w-10 p-0"
               >
                 {isLoading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
@@ -508,60 +559,49 @@ export function PersistentMusicPlayer() {
                   <Play className="h-4 w-4" />
                 )}
               </Button>
-              
-              {hasNavigation && (
+
+              {/* Progress Bar */}
+              <div className="flex items-center gap-2 flex-1 max-w-md">
+                <span className="text-xs text-muted-foreground w-8 text-right">
+                  {formatTime(currentTime)}
+                </span>
+                <Slider
+                  value={[currentTime]}
+                  max={duration || 100}
+                  step={1}
+                  onValueChange={handleSeek}
+                  className="flex-1"
+                />
+                <span className="text-xs text-muted-foreground w-8">
+                  {formatTime(duration)}
+                </span>
+              </div>
+
+              {/* Volume Control */}
+              <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={nextTrack}
+                  onClick={toggleMute}
                   className="h-8 w-8 p-0"
                 >
-                  <SkipForward className="h-4 w-4" />
+                  {isMuted || volume === 0 ? (
+                    <VolumeX className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
                 </Button>
-              )}
+                <Slider
+                  value={[isMuted ? 0 : volume]}
+                  max={1}
+                  step={0.01}
+                  onValueChange={handleVolumeChange}
+                  className="w-16"
+                />
+              </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <span className="text-xs text-muted-foreground w-10 text-right">
-                {formatTime(currentTime)}
-              </span>
-              <Slider
-                value={[currentTime]}
-                max={duration || 100}
-                step={1}
-                onValueChange={handleSeek}
-                className="flex-1"
-              />
-              <span className="text-xs text-muted-foreground w-10">
-                {formatTime(duration)}
-              </span>
-            </div>
-
-            {/* Volume Control */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleMute}
-                className="h-8 w-8 p-0"
-              >
-                {isMuted || volume === 0 ? (
-                  <VolumeX className="h-4 w-4" />
-                ) : (
-                  <Volume2 className="h-4 w-4" />
-                )}
-              </Button>
-              <Slider
-                value={[isMuted ? 0 : volume]}
-                max={1}
-                step={0.01}
-                onValueChange={handleVolumeChange}
-                className="w-20"
-              />
-            </div>
-
-            {/* Action Buttons: Heart, Zap, X */}
+            {/* Right: Action Buttons */}
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
