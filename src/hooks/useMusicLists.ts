@@ -2,8 +2,6 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent } from '@nostrify/nostrify';
 
-// Peachy's pubkey
-const PEACHY_PUBKEY = "0e7b8b91f952a3c994f51d2a69f0b62c778958aad855e10fef8813bc382ed820";
 
 export interface MusicTrack {
   id: string;
@@ -159,11 +157,11 @@ function parseMusicList(event: NostrEvent): NostrMusicList | null {
 }
 
 // Hook to get all music tracks from Peachy
-export function useMusicTracks() {
+export function useMusicTracks(authorPubkey?: string) {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['music-tracks', PEACHY_PUBKEY],
+    queryKey: ['music-tracks', authorPubkey],
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(3000)]);
       
@@ -171,7 +169,7 @@ export function useMusicTracks() {
       const events = await nostr.query([
         {
           kinds: [32123], // Wavlake tracks with NOM specification
-          authors: [PEACHY_PUBKEY],
+          ...(authorPubkey && { authors: [authorPubkey] }),
           limit: 100,
         }
       ], { signal });
@@ -191,12 +189,12 @@ export function useMusicTracks() {
   });
 }
 
-// Hook to get music lists from Peachy
-export function useMusicLists() {
+// Hook to get music lists from a specific author
+export function useMusicLists(authorPubkey?: string) {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['music-lists', PEACHY_PUBKEY],
+    queryKey: ['music-lists', authorPubkey],
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(3000)]);
       
@@ -204,7 +202,7 @@ export function useMusicLists() {
       const events = await nostr.query([
         {
           kinds: [30004, 30005], // Curation sets for music
-          authors: [PEACHY_PUBKEY],
+          ...(authorPubkey && { authors: [authorPubkey] }),
           limit: 50,
         }
       ], { signal });
@@ -220,20 +218,20 @@ export function useMusicLists() {
   });
 }
 
-// Hook to get Peachy's Weekly Wavlake Picks (from custom Nostr event)
-export function useWavlakePicks() {
+// Hook to get Wavlake Picks (from custom Nostr event)
+export function useWavlakePicks(authorPubkey?: string) {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['wavlake-picks', PEACHY_PUBKEY],
+    queryKey: ['wavlake-picks', authorPubkey],
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
       
-      // Query for Peachy's custom wavlake-picks list
+      // Query for custom wavlake-picks list
       const events = await nostr.query([
         {
           kinds: [30004], // NIP-51 Curation sets
-          authors: [PEACHY_PUBKEY],
+          ...(authorPubkey && { authors: [authorPubkey] }),
           '#d': ['wavlake-picks'],
           limit: 1,
         }
@@ -255,7 +253,7 @@ export function useWavlakePicks() {
       if (trackIds.length === 0) {
         return {
           id: picksEvent.id,
-          pubkey: PEACHY_PUBKEY,
+          pubkey: picksEvent.pubkey,
           dTag: 'wavlake-picks',
           title: picksEvent.tags.find(([tag]) => tag === 'title')?.[1] || "Peachy's Weekly Wavlake Picks",
           description: picksEvent.tags.find(([tag]) => tag === 'description')?.[1] || 'Curated Bitcoin music tracks from Wavlake',
@@ -320,7 +318,7 @@ export function useWavlakePicks() {
 
       return {
         id: picksEvent.id,
-        pubkey: PEACHY_PUBKEY,
+        pubkey: picksEvent.pubkey,
         dTag: 'wavlake-picks',
         title: picksEvent.tags.find(([tag]) => tag === 'title')?.[1] || "Peachy's Weekly Wavlake Picks",
         description: picksEvent.tags.find(([tag]) => tag === 'description')?.[1] || 'Curated Bitcoin music tracks from Wavlake',

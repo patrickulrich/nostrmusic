@@ -1,19 +1,28 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useMusicPlayer } from "@/hooks/useMusicPlayer";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
-// Peachy's pubkey
-const PEACHY_PUBKEY = "0e7b8b91f952a3c994f51d2a69f0b62c778958aad855e10fef8813bc382ed820";
-
 export function MainLayout({ children }: MainLayoutProps) {
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useCurrentUser();
-  const isPeachy = user?.pubkey === PEACHY_PUBKEY;
+  const { isPlayerVisible } = useMusicPlayer();
+  const isMobile = useIsMobile();
+
+  // Don't add player padding on fullscreen pages
+  const isFullscreenPage = location.pathname === '/radio' || location.pathname === '/party-view';
+  const shouldShowPlayerPadding = isPlayerVisible && !isFullscreenPage;
+  
+  // Different padding for mobile (larger player) vs desktop
+  const playerPaddingClass = shouldShowPlayerPadding 
+    ? (isMobile ? 'pb-40' : 'pb-20') 
+    : '';
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,9 +31,8 @@ export function MainLayout({ children }: MainLayoutProps) {
         <Sidebar 
           open={sidebarOpen} 
           onClose={() => setSidebarOpen(false)} 
-          isPeachy={isPeachy}
         />
-        <main className="flex-1 w-full lg:pl-64">
+        <main className={`flex-1 w-full lg:pl-64 ${playerPaddingClass}`}>
           {children}
         </main>
       </div>

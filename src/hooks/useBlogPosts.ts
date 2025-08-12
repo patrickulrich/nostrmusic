@@ -2,8 +2,6 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent } from '@nostrify/nostrify';
 
-// Peachy's pubkey
-const PEACHY_PUBKEY = "0e7b8b91f952a3c994f51d2a69f0b62c778958aad855e10fef8813bc382ed820";
 
 export interface BlogPost {
   id: string;
@@ -61,19 +59,19 @@ function parseBlogPost(event: NostrEvent): BlogPost {
   };
 }
 
-export function useBlogPosts() {
+export function useBlogPosts(authorPubkey?: string) {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['blog-posts', PEACHY_PUBKEY],
+    queryKey: ['blog-posts', authorPubkey],
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(3000)]);
       
-      // Query for Peachy's published long-form content (kind:30023)
+      // Query for published long-form content (kind:30023)
       const events = await nostr.query([
         {
           kinds: [30023], // Only published posts, not drafts
-          authors: [PEACHY_PUBKEY],
+          ...(authorPubkey && { authors: [authorPubkey] }),
           limit: 50,
         }
       ], { signal });
@@ -101,11 +99,11 @@ export function useBlogPosts() {
 }
 
 // Hook to get a specific blog post by d-tag
-export function useBlogPost(dTag: string) {
+export function useBlogPost(dTag: string, authorPubkey?: string) {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['blog-post', PEACHY_PUBKEY, dTag],
+    queryKey: ['blog-post', authorPubkey, dTag],
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(3000)]);
       
@@ -113,7 +111,7 @@ export function useBlogPost(dTag: string) {
       const events = await nostr.query([
         {
           kinds: [30023],
-          authors: [PEACHY_PUBKEY],
+          ...(authorPubkey && { authors: [authorPubkey] }),
           '#d': [dTag],
           limit: 1,
         }

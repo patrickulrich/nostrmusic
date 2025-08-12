@@ -5,6 +5,7 @@ import { NostrLoginProvider } from '@nostrify/react/login';
 import NostrProvider from '@/components/NostrProvider';
 import { AppProvider } from '@/components/AppProvider';
 import { NWCProvider } from '@/contexts/NWCContext';
+import { MusicPlayerProvider } from '@/contexts/MusicPlayerContext';
 import { AppConfig } from '@/contexts/AppContext';
 
 interface TestAppProps {
@@ -33,9 +34,11 @@ export function TestApp({ children }: TestAppProps) {
           <NostrLoginProvider storageKey='test-login'>
             <NostrProvider>
               <NWCProvider>
-                <BrowserRouter>
-                  {children}
-                </BrowserRouter>
+                <MusicPlayerProvider>
+                  <BrowserRouter>
+                    {children}
+                  </BrowserRouter>
+                </MusicPlayerProvider>
               </NWCProvider>
             </NostrProvider>
           </NostrLoginProvider>

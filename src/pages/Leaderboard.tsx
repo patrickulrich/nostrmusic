@@ -14,12 +14,9 @@ import { useToast } from '@/hooks/useToast';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useQueryClient } from '@tanstack/react-query';
 import { Trophy, Heart, Play, Plus, Music } from 'lucide-react';
-import { MusicPlayer } from '@/components/music/MusicPlayer';
+import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
 import type { MusicTrack } from '@/hooks/useMusicLists';
 import type { NostrEvent } from '@nostrify/nostrify';
-
-// Peachy's pubkey
-const PEACHY_PUBKEY = "0e7b8b91f952a3c994f51d2a69f0b62c778958aad855e10fef8813bc382ed820";
 
 interface VoteData {
   trackId: string;
@@ -36,9 +33,7 @@ export default function WeeklySongsLeaderboard() {
     description: 'See the top 10 most voted songs of the week from the community.',
   });
 
-  const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTrackList, setCurrentTrackList] = useState<MusicTrack[]>([]);
+  const { playTrack, currentTrack, isPlaying } = useGlobalMusicPlayer();
   const [addingTrackIds, setAddingTrackIds] = useState<Set<string>>(new Set());
   const [votersModalData, setVotersModalData] = useState<{
     open: boolean;
@@ -58,7 +53,6 @@ export default function WeeklySongsLeaderboard() {
   const { mutateAsync: publishEvent } = useNostrPublish();
   const queryClient = useQueryClient();
   
-  const isPeachy = user?.pubkey === PEACHY_PUBKEY;
 
   // Query all voting events
   const { data: voteEvents = [], isLoading: isVotesLoading } = useQuery({
@@ -216,12 +210,10 @@ export default function WeeklySongsLeaderboard() {
   }, [musicTracks]);
 
   // Play track function
-  const playTrack = useCallback(async (voteData: VoteData) => {
+  const handlePlayTrack = useCallback(async (voteData: VoteData) => {
     const musicTrack = await convertVoteToMusicTrack(voteData);
     if (musicTrack) {
-      setCurrentTrack(musicTrack);
-      setCurrentTrackList([musicTrack]);
-      setIsPlaying(true);
+      playTrack(musicTrack, [musicTrack]);
     } else {
       toast({
         title: 'Failed to Play Track',
@@ -229,11 +221,11 @@ export default function WeeklySongsLeaderboard() {
         variant: 'destructive',
       });
     }
-  }, [convertVoteToMusicTrack, toast]);
+  }, [convertVoteToMusicTrack, toast, playTrack]);
 
-  // Add to Peachy's picks function
-  const addToPeachyPicks = useCallback(async (voteData: VoteData) => {
-    if (!isPeachy) return;
+  // Add to picks function
+  const addToPicks = useCallback(async (voteData: VoteData) => {
+    if (!user) return;
 
     // Prevent multiple simultaneous additions of the same track
     if (addingTrackIds.has(voteData.trackId)) {
@@ -254,7 +246,7 @@ export default function WeeklySongsLeaderboard() {
       setAddingTrackIds(prev => new Set(prev).add(voteData.trackId));
       
       // Get current picks data for optimistic update
-      const currentPicksData = queryClient.getQueryData(['wavlake-picks', PEACHY_PUBKEY]);
+      const currentPicksData = queryClient.getQueryData(['wavlake-picks', user.pubkey]);
       
       // Check if track is already added to prevent duplicates
       if (currentPicksData && typeof currentPicksData === 'object' && 'tracks' in currentPicksData) {
@@ -271,11 +263,11 @@ export default function WeeklySongsLeaderboard() {
       }
 
       // Optimistically update the cache immediately
-      queryClient.setQueryData(['wavlake-picks', PEACHY_PUBKEY], (oldData: unknown) => {
+      queryClient.setQueryData(['wavlake-picks', user.pubkey], (oldData: unknown) => {
         if (!oldData || typeof oldData !== 'object' || !('tracks' in oldData)) {
           return {
             tracks: [musicTrack],
-            title: "Peachy's Weekly Wavlake Picks",
+            title: "Weekly Wavlake Picks",
             updatedAt: Math.floor(Date.now() / 1000)
           };
         }
@@ -316,7 +308,7 @@ export default function WeeklySongsLeaderboard() {
         if (!success) {
           // If addTrackToPicksSimple returned false, revert the optimistic update
           queryClient.invalidateQueries({
-            queryKey: ['wavlake-picks', PEACHY_PUBKEY]
+            queryKey: ['wavlake-picks', user.pubkey]
           });
         }
       } catch (publishError) {
@@ -324,7 +316,7 @@ export default function WeeklySongsLeaderboard() {
         
         // Revert the optimistic update on publish failure
         queryClient.invalidateQueries({
-          queryKey: ['wavlake-picks', PEACHY_PUBKEY]
+          queryKey: ['wavlake-picks', user.pubkey]
         });
         
         toast({
@@ -339,7 +331,7 @@ export default function WeeklySongsLeaderboard() {
       
       // Revert the optimistic update on error
       queryClient.invalidateQueries({
-        queryKey: ['wavlake-picks', PEACHY_PUBKEY]
+        queryKey: ['wavlake-picks', user.pubkey]
       });
       
       toast({
@@ -354,21 +346,8 @@ export default function WeeklySongsLeaderboard() {
         return newSet;
       });
     }
-  }, [isPeachy, convertVoteToMusicTrack, toast, addingTrackIds, queryClient, publishEvent]);
+  }, [user, convertVoteToMusicTrack, toast, addingTrackIds, queryClient, publishEvent]);
 
-  const handleNext = useCallback(() => {
-    // TODO: Implement next track functionality
-  }, []);
-
-  const handlePrevious = useCallback(() => {
-    // TODO: Implement previous track functionality  
-  }, []);
-
-  const handleClosePlayer = useCallback(() => {
-    setCurrentTrack(null);
-    setIsPlaying(false);
-    setCurrentTrackList([]);
-  }, []);
 
   // Remove Peachy-only restriction - page is now visible to everyone
   // Combined loading state for both votes and track data
@@ -376,7 +355,7 @@ export default function WeeklySongsLeaderboard() {
 
   return (
     <MainLayout>
-      <div className={`container mx-auto px-4 py-8 ${currentTrack ? 'pb-48 sm:pb-8' : ''}`}>
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-4 flex items-center gap-3">
             <Trophy className="h-10 w-10 text-primary" />
@@ -452,7 +431,7 @@ export default function WeeklySongsLeaderboard() {
                                 <Button
                                   size="sm"
                                   className="rounded-full h-8 w-8 p-0"
-                                  onClick={() => playTrack(vote)}
+                                  onClick={() => handlePlayTrack(vote)}
                                 >
                                   {trackIsPlaying ? (
                                     <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin" />
@@ -489,9 +468,9 @@ export default function WeeklySongsLeaderboard() {
                               <Badge 
                                 variant="outline" 
                                 className={`text-xs flex items-center gap-1 ${
-                                  isPeachy ? 'cursor-pointer hover:bg-muted transition-colors' : ''
+                                  user ? 'cursor-pointer hover:bg-muted transition-colors' : ''
                                 }`}
-                                onClick={isPeachy ? () => {
+                                onClick={user ? () => {
                                   setVotersModalData({
                                     open: true,
                                     trackTitle: vote.trackTitle,
@@ -510,7 +489,7 @@ export default function WeeklySongsLeaderboard() {
                             <Button
                               size="sm"
                               variant={trackIsPlaying ? "default" : "outline"}
-                              onClick={() => playTrack(vote)}
+                              onClick={() => handlePlayTrack(vote)}
                             >
                               {trackIsPlaying ? (
                                 <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin mr-2" />
@@ -520,11 +499,11 @@ export default function WeeklySongsLeaderboard() {
                               {trackIsPlaying ? 'Playing' : 'Play'}
                             </Button>
                             
-                            {isPeachy && (
+                            {user && (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => addToPeachyPicks(vote)}
+                                onClick={() => addToPicks(vote)}
                                 disabled={addingTrackIds.has(vote.trackId)}
                               >
                                 {addingTrackIds.has(vote.trackId) ? (
@@ -543,7 +522,7 @@ export default function WeeklySongsLeaderboard() {
                           <Button
                             size="sm"
                             variant={trackIsPlaying ? "default" : "outline"}
-                            onClick={() => playTrack(vote)}
+                            onClick={() => handlePlayTrack(vote)}
                           >
                             {trackIsPlaying ? (
                               <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin mr-2" />
@@ -553,11 +532,11 @@ export default function WeeklySongsLeaderboard() {
                             {trackIsPlaying ? 'Playing' : 'Play'}
                           </Button>
                           
-                          {isPeachy && (
+                          {user && (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => addToPeachyPicks(vote)}
+                              onClick={() => addToPicks(vote)}
                               disabled={addingTrackIds.has(vote.trackId)}
                             >
                               {addingTrackIds.has(vote.trackId) ? (
@@ -588,18 +567,6 @@ export default function WeeklySongsLeaderboard() {
           </CardContent>
         </Card>
 
-        {/* Music Player */}
-        {currentTrack && (
-          <div className="fixed bottom-0 left-0 right-0 sm:bottom-4 sm:left-4 sm:right-4 z-50">
-            <MusicPlayer
-              track={currentTrack}
-              autoPlay={isPlaying}
-              onNext={currentTrackList.length > 1 ? handleNext : undefined}
-              onPrevious={currentTrackList.length > 1 ? handlePrevious : undefined}
-              onClose={handleClosePlayer}
-            />
-          </div>
-        )}
 
         {/* Voters Modal */}
         <VotersModal

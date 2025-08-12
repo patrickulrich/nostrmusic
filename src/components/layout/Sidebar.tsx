@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Camera, User, Mic, Calendar, Music, BookOpen, Home, Trophy } from "lucide-react";
+import { Home, Trophy } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
@@ -11,13 +11,7 @@ interface SidebarProps {
 
 const baseMenuItems = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: User, label: "About", path: "/about" },
-  { icon: Camera, label: "Photos", path: "/photos" },
-  { icon: Calendar, label: "Events", path: "/events" },
-  { icon: BookOpen, label: "Blog", path: "/blog" },
-  { icon: Mic, label: "Audio Rooms", path: "/audio-rooms" },
-  { icon: Music, label: "Peachy's Weekly Wavlake Picks", path: "/wavlake-picks" },
-  { icon: Trophy, label: "Weekly Songs Leaderboard", path: "/weekly-songs-leaderboard" },
+  { icon: Trophy, label: "Leaderboard", path: "/leaderboard" },
 ];
 
 const peachyOnlyItems = [

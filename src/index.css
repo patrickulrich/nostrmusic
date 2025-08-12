@@ -4,93 +4,93 @@
 
 @layer base {
   :root {
-    /* Light mode - Peachy Pink theme */
-    --background: 350 100% 99%;
-    --foreground: 350 95% 10%;
+    /* Light mode - Nostr Purple theme */
+    --background: 250 50% 98%;
+    --foreground: 260 15% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 350 95% 10%;
+    --card-foreground: 260 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 350 95% 10%;
+    --popover-foreground: 260 15% 15%;
 
-    /* Primary - Peachy pink */
-    --primary: 350 65% 75%;
+    /* Primary - Nostr purple */
+    --primary: 260 85% 65%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Soft peach */
-    --secondary: 20 70% 95%;
-    --secondary-foreground: 350 95% 10%;
+    /* Secondary - Light purple */
+    --secondary: 250 60% 95%;
+    --secondary-foreground: 260 15% 15%;
 
-    --muted: 350 30% 96%;
-    --muted-foreground: 350 15% 45%;
+    --muted: 250 40% 96%;
+    --muted-foreground: 260 10% 45%;
 
-    /* Accent - Coral pink */
-    --accent: 10 70% 85%;
-    --accent-foreground: 350 95% 10%;
+    /* Accent - Vibrant purple */
+    --accent: 270 70% 85%;
+    --accent-foreground: 260 15% 15%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 350 30% 90%;
-    --input: 350 30% 90%;
-    --ring: 350 65% 75%;
+    --border: 250 30% 90%;
+    --input: 250 30% 90%;
+    --ring: 260 85% 65%;
 
     --radius: 0.5rem;
 
-    /* Sidebar - Light peachy tones */
-    --sidebar-background: 350 40% 98%;
-    --sidebar-foreground: 350 50% 20%;
-    --sidebar-primary: 350 65% 75%;
+    /* Sidebar - Light purple tones */
+    --sidebar-background: 250 50% 98%;
+    --sidebar-foreground: 260 20% 25%;
+    --sidebar-primary: 260 85% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 350 30% 95%;
-    --sidebar-accent-foreground: 350 95% 10%;
-    --sidebar-border: 350 30% 90%;
-    --sidebar-ring: 350 65% 75%;
+    --sidebar-accent: 250 40% 95%;
+    --sidebar-accent-foreground: 260 15% 15%;
+    --sidebar-border: 250 30% 90%;
+    --sidebar-ring: 260 85% 65%;
   }
 
   .dark {
-    /* Dark mode - Deep purple/peachy tones */
-    --background: 280 20% 8%;
-    --foreground: 350 20% 95%;
+    /* Dark mode - Deep Nostr purple theme */
+    --background: 260 25% 8%;
+    --foreground: 250 20% 95%;
 
-    --card: 280 15% 12%;
-    --card-foreground: 350 20% 95%;
+    --card: 260 20% 12%;
+    --card-foreground: 250 20% 95%;
 
-    --popover: 280 15% 12%;
-    --popover-foreground: 350 20% 95%;
+    --popover: 260 20% 12%;
+    --popover-foreground: 250 20% 95%;
 
-    /* Primary - Peachy pink (brighter in dark mode) */
-    --primary: 350 70% 65%;
+    /* Primary - Bright Nostr purple */
+    --primary: 260 90% 70%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary - Deep purple */
-    --secondary: 280 25% 20%;
-    --secondary-foreground: 350 20% 95%;
+    --secondary: 260 30% 18%;
+    --secondary-foreground: 250 20% 95%;
 
-    --muted: 280 15% 25%;
-    --muted-foreground: 350 15% 65%;
+    --muted: 260 20% 22%;
+    --muted-foreground: 250 15% 65%;
 
-    /* Accent - Soft pink */
-    --accent: 340 50% 30%;
-    --accent-foreground: 350 20% 95%;
+    /* Accent - Vibrant purple */
+    --accent: 270 60% 35%;
+    --accent-foreground: 250 20% 95%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 350 20% 95%;
+    --destructive-foreground: 250 20% 95%;
 
-    --border: 280 20% 20%;
-    --input: 280 20% 20%;
-    --ring: 350 70% 65%;
+    --border: 260 25% 20%;
+    --input: 260 25% 20%;
+    --ring: 260 90% 70%;
 
-    /* Sidebar - Dark purple/peachy tones */
-    --sidebar-background: 280 20% 10%;
-    --sidebar-foreground: 350 20% 90%;
-    --sidebar-primary: 350 70% 65%;
+    /* Sidebar - Dark Nostr purple tones */
+    --sidebar-background: 260 25% 10%;
+    --sidebar-foreground: 250 20% 90%;
+    --sidebar-primary: 260 90% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 280 20% 15%;
-    --sidebar-accent-foreground: 350 20% 90%;
-    --sidebar-border: 280 20% 20%;
-    --sidebar-ring: 350 70% 65%;
+    --sidebar-accent: 260 20% 15%;
+    --sidebar-accent-foreground: 250 20% 90%;
+    --sidebar-border: 260 25% 20%;
+    --sidebar-ring: 260 90% 70%;
   }
 }
 

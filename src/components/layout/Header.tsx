@@ -25,26 +25,28 @@ export function Header({ onMenuClick, className }: HeaderProps) {
       )}
     >
       <div className="container flex h-16 items-center px-4">
-        {/* Left: Hamburger menu */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMenuClick}
-          className="mr-4 lg:hidden"
-          aria-label="Open menu"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-
-        {/* Center: Logo */}
-        <div className="flex-1 flex items-center justify-center lg:justify-start">
+        {/* Left: Hamburger menu and Logo */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMenuClick}
+            className="lg:hidden"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          
           <a
             href="/"
             className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hover:opacity-80 transition-opacity"
           >
-            Peachy
+            NostrMusic
           </a>
         </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
 
         {/* Right: Notifications, Theme toggle and Login/Profile */}
         <div className="flex items-center gap-2">

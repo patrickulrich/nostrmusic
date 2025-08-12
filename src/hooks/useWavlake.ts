@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import { wavlakeAPI } from '@/lib/wavlake';
 
 export function useWavlakeSearch(term: string, enabled: boolean = true) {
   return useQuery({
     queryKey: ['wavlake-search', term],
     queryFn: async () => {
-      const { wavlakeAPI } = await import('@/lib/wavlake');
       return wavlakeAPI.searchContent(term);
     },
     enabled: enabled && term.length > 0,
@@ -23,7 +23,6 @@ export function useWavlakeRankings(params: {
   return useQuery({
     queryKey: ['wavlake-rankings', params],
     queryFn: async () => {
-      const { wavlakeAPI } = await import('@/lib/wavlake');
       return wavlakeAPI.getRankings(params);
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -34,7 +33,6 @@ export function useWavlakeTrack(trackId: string | undefined) {
   return useQuery({
     queryKey: ['wavlake-track', trackId],
     queryFn: async () => {
-      const { wavlakeAPI } = await import('@/lib/wavlake');
       return wavlakeAPI.getTrack(trackId!);
     },
     enabled: !!trackId,
@@ -46,7 +44,6 @@ export function useWavlakeArtist(artistId: string | undefined) {
   return useQuery({
     queryKey: ['wavlake-artist', artistId],
     queryFn: async () => {
-      const { wavlakeAPI } = await import('@/lib/wavlake');
       return wavlakeAPI.getArtist(artistId!);
     },
     enabled: !!artistId,
@@ -58,7 +55,6 @@ export function useWavlakeAlbum(albumId: string | undefined) {
   return useQuery({
     queryKey: ['wavlake-album', albumId],
     queryFn: async () => {
-      const { wavlakeAPI } = await import('@/lib/wavlake');
       return wavlakeAPI.getAlbum(albumId!);
     },
     enabled: !!albumId,
@@ -70,7 +66,6 @@ export function useWavlakePlaylist(playlistId: string | undefined) {
   return useQuery({
     queryKey: ['wavlake-playlist', playlistId],
     queryFn: async () => {
-      const { wavlakeAPI } = await import('@/lib/wavlake');
       return wavlakeAPI.getPlaylist(playlistId!);
     },
     enabled: !!playlistId,
@@ -78,11 +73,10 @@ export function useWavlakePlaylist(playlistId: string | undefined) {
   });
 }
 
-export function useWavlakeLnurl(contentId: string | undefined, appId: string = 'peachyhodl') {
+export function useWavlakeLnurl(contentId: string | undefined, appId: string = 'nostrmusic') {
   return useQuery({
     queryKey: ['wavlake-lnurl', contentId, appId],
     queryFn: async () => {
-      const { wavlakeAPI } = await import('@/lib/wavlake');
       return wavlakeAPI.getLnurl(contentId!, appId);
     },
     enabled: !!contentId,

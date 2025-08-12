@@ -1,11 +1,11 @@
 {
-  "name": "Peachy - Bitcoin is the future and it's just peachy",
-  "short_name": "Peachy",
-  "description": "Join Peachy for Bitcoin content, live streams, and community on Nostr.",
+  "name": "NostrMusic - Decentralized music on Bitcoin and Nostr",
+  "short_name": "NostrMusic",
+  "description": "Join NostrMusic for Bitcoin music, live streams, and community on Nostr.",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#f4a6cd",
-  "background_color": "#fefbfb",
+  "theme_color": "#8b5cf6",
+  "background_color": "#faf5ff",
   "icons": [
     {
       "src": "/favicon.ico",

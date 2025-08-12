@@ -5,9 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MusicPlayer } from '@/components/music/MusicPlayer';
 import { useWavlakePicks, useTracksFromList } from '@/hooks/useMusicLists';
 import { useWavlakeArtist } from '@/hooks/useWavlake';
+import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
 import QRCode from 'qrcode';
 import { 
   X, 
@@ -21,23 +21,21 @@ import {
 
 export default function PartyView() {
   useSeoMeta({
-    title: 'Party Mode - Peachy\'s Wavlake Picks',
+    title: 'Party Mode - NostrMusic Wavlake Picks',
     description: 'Full-screen music experience with artist information and zap codes.',
   });
 
   const navigate = useNavigate();
   const { data: wavlakeList, isLoading: isListLoading } = useWavlakePicks();
   const { data: tracksOriginal = [], isLoading: isTracksLoading } = useTracksFromList(wavlakeList?.tracks || []);
+  const { playTracksFromList, currentTrack, closePlayer } = useGlobalMusicPlayer();
   
   // Reverse tracks for countdown effect (start from last, count down to #1)
   const tracks = [...tracksOriginal].reverse();
   
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true); // Auto-play enabled
   const [zapQrCode, setZapQrCode] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const currentTrack = tracks[currentTrackIndex];
   const isLoading = isListLoading || isTracksLoading;
   
   // Calculate position number (counting down from total to 1)
@@ -48,22 +46,6 @@ export default function PartyView() {
     currentTrack?.artistId || undefined
   );
 
-  // Auto-advance to next track
-  const handleNext = useCallback(() => {
-    if (tracks.length === 0) return;
-    
-    const nextIndex = (currentTrackIndex + 1) % tracks.length;
-    setCurrentTrackIndex(nextIndex);
-    setIsPlaying(true);
-  }, [currentTrackIndex, tracks.length]);
-
-  const handlePrevious = useCallback(() => {
-    if (tracks.length === 0) return;
-    
-    const prevIndex = currentTrackIndex === 0 ? tracks.length - 1 : currentTrackIndex - 1;
-    setCurrentTrackIndex(prevIndex);
-    setIsPlaying(true);
-  }, [currentTrackIndex, tracks.length]);
 
   // Generate Lightning QR code for zapping
   useEffect(() => {
@@ -76,7 +58,7 @@ export default function PartyView() {
       try {
         // Get LNURL for the track from Wavlake API
         const { wavlakeAPI } = await import('@/lib/wavlake');
-        const lnurlResponse = await wavlakeAPI.getLnurl(currentTrack.id, 'peachyhodl');
+        const lnurlResponse = await wavlakeAPI.getLnurl(currentTrack.id, 'nostrmusic');
         
         if (!lnurlResponse.lnurl) {
           throw new Error('No LNURL found for this track');
@@ -144,7 +126,7 @@ export default function PartyView() {
         // Fallback: Generate QR code for the LNURL itself if invoice generation fails
         try {
           const { wavlakeAPI } = await import('@/lib/wavlake');
-          const lnurlResponse = await wavlakeAPI.getLnurl(currentTrack.id, 'peachyhodl');
+          const lnurlResponse = await wavlakeAPI.getLnurl(currentTrack.id, 'nostrmusic');
           
           if (lnurlResponse.lnurl) {
             const qrDataUrl = await QRCode.toDataURL(lnurlResponse.lnurl.toUpperCase(), {
@@ -172,9 +154,18 @@ export default function PartyView() {
   // Auto-play management
   useEffect(() => {
     if (tracks.length > 0 && !currentTrack) {
+      // Stop any current global player first
+      closePlayer();
       setCurrentTrackIndex(0);
+      // Start playing the party playlist
+      playTracksFromList(tracks, 0);
     }
-  }, [tracks, currentTrack]);
+  }, [tracks, currentTrack, playTracksFromList, closePlayer]);
+
+  // Stop global player when entering party mode
+  useEffect(() => {
+    closePlayer();
+  }, [closePlayer]);
 
   // Enter fullscreen mode on mount
   useEffect(() => {
@@ -212,7 +203,7 @@ export default function PartyView() {
         // Fallback if exit fullscreen fails
       });
     }
-    navigate('/wavlake-picks');
+    navigate('/');
   }, [navigate]);
 
   // Toggle fullscreen
@@ -267,8 +258,8 @@ export default function PartyView() {
             <p className="text-muted-foreground mb-4">
               No tracks found in Peachy's playlist for party mode.
             </p>
-            <Button onClick={() => navigate('/wavlake-picks')}>
-              Back to Playlist
+            <Button onClick={() => navigate('/')}>
+              Back to Home
             </Button>
           </CardContent>
         </Card>
@@ -429,20 +420,6 @@ export default function PartyView() {
         </div>
       </div>
 
-      {/* Bottom section - Music Player */}
-      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-6">
-        <div className="container mx-auto max-w-4xl">
-          {currentTrack && (
-            <MusicPlayer
-              track={currentTrack}
-              autoPlay={isPlaying}
-              onNext={tracks.length > 1 ? handleNext : undefined}
-              onPrevious={tracks.length > 1 ? handlePrevious : undefined}
-              className="shadow-lg"
-            />
-          )}
-        </div>
-      </div>
 
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
