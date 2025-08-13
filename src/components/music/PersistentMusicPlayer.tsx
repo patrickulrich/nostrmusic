@@ -26,6 +26,7 @@ import {
 export function PersistentMusicPlayer() {
   const location = useLocation();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const lastPublishedTrackId = useRef<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const { 
     currentTrack, 
@@ -59,17 +60,15 @@ export function PersistentMusicPlayer() {
 
   // Audio event handlers
   const handleLoadStart = useCallback(() => {
-    console.log('Audio loading started for:', currentTrack?.title);
     setIsLoading(true);
-  }, [setIsLoading, currentTrack?.title]);
+  }, [setIsLoading]);
 
   const handleLoadedData = useCallback(() => {
-    console.log('Audio loaded successfully for:', currentTrack?.title);
     setIsLoading(false);
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
     }
-  }, [setDuration, setIsLoading, currentTrack?.title]);
+  }, [setDuration, setIsLoading]);
 
   const handleTimeUpdate = useCallback(() => {
     if (audioRef.current) {
@@ -82,21 +81,13 @@ export function PersistentMusicPlayer() {
     if (isPlaying && hasUserInteracted && audioRef.current && audioRef.current.paused) {
       audioRef.current.play()
         .then(() => {
-          console.log('Auto-play started successfully');
-          // Publish music status when track starts playing
-          if (isStatusEnabled && currentTrack) {
-            const trackUrl = currentTrack.id ? `https://nostrmusic.com/wavlake/${currentTrack.id}` : undefined;
-            publishMusicStatus({
-              title: currentTrack.title,
-              artist: currentTrack.artist,
-              duration: duration || undefined,
-              url: trackUrl
-            });
-          }
+          // Status publishing is now handled by useEffect only
         })
-        .catch((error) => console.log('Auto-play failed:', error.name));
+        .catch(() => {
+          // Auto-play failed, but this is expected in many browsers
+        });
     }
-  }, [isPlaying, hasUserInteracted, isStatusEnabled, currentTrack, duration, publishMusicStatus]);
+  }, [isPlaying, hasUserInteracted]);
 
   const handleEnded = useCallback(() => {
     // Auto-advance to next track if available
@@ -104,12 +95,9 @@ export function PersistentMusicPlayer() {
       nextTrack();
       // Note: Status will be updated when the new track starts playing
     } else {
-      // Clear music status only when no more tracks to play
-      if (isStatusEnabled) {
-        clearMusicStatus();
-      }
+      // Status clearing is handled by useEffect
     }
-  }, [nextTrack, playlist.length, isStatusEnabled, clearMusicStatus]);
+  }, [nextTrack, playlist.length]);
 
   const handleError = useCallback(() => {
     setIsLoading(false);
@@ -143,7 +131,6 @@ export function PersistentMusicPlayer() {
       if (audioRef.current.readyState >= 3) { // HAVE_FUTURE_DATA or higher
         audioRef.current.play()
           .then(() => {
-            console.log('Audio playback started successfully');
             // Publish music status when track starts playing
             if (isStatusEnabled && currentTrack) {
               const trackUrl = currentTrack.id ? `https://nostrmusic.com/wavlake/${currentTrack.id}` : undefined;
@@ -155,14 +142,13 @@ export function PersistentMusicPlayer() {
               });
             }
           })
-          .catch((error) => console.log('Audio playback failed:', error.name));
+          .catch(() => {
+            // Audio playback failed
+          });
       }
     } else if (!isPlaying) {
       audioRef.current.pause();
-      // Clear music status when playback is paused
-      if (isStatusEnabled) {
-        clearMusicStatus();
-      }
+      // Status clearing is now handled by useEffect only
     }
   }, [isPlaying, hasUserInteracted, currentTrack, duration, isStatusEnabled, publishMusicStatus, clearMusicStatus]);
 
@@ -189,12 +175,10 @@ export function PersistentMusicPlayer() {
       const match = mediaUrl.match(/https:\/\/op3\.dev\/e,[^/]+\/(.+)/);
       if (match && match[1]) {
         const directUrl = decodeURIComponent(match[1]);
-        console.log('Extracted direct URL from op3.dev:', directUrl);
         mediaUrl = directUrl;
       }
     }
 
-    console.log('Setting audio source to:', mediaUrl);
     audioRef.current.src = mediaUrl;
     audioRef.current.load();
   }, [currentTrack, setIsLoading, toast]);
@@ -205,21 +189,31 @@ export function PersistentMusicPlayer() {
     audioRef.current.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
-  // Publish music status when track changes OR when playback state changes
+  // Publish music status only when track actually changes
   useEffect(() => {
-    if (isStatusEnabled && currentTrack && isPlaying && hasUserInteracted) {
-      const trackUrl = currentTrack.id ? `https://nostrmusic.com/wavlake/${currentTrack.id}` : undefined;
+    const currentTrackId = currentTrack?.id || null;
+    
+    // Only publish if track ID actually changed and we should be playing
+    if (isStatusEnabled && currentTrackId && isPlaying && hasUserInteracted && 
+        currentTrackId !== lastPublishedTrackId.current) {
+      
+      lastPublishedTrackId.current = currentTrackId;
+      const trackUrl = `https://nostrmusic.com/wavlake/${currentTrackId}`;
       publishMusicStatus({
-        title: currentTrack.title,
-        artist: currentTrack.artist,
+        title: currentTrack!.title,
+        artist: currentTrack!.artist,
         duration: duration || undefined,
         url: trackUrl
       });
-    } else if (isStatusEnabled && !isPlaying) {
-      // Clear status when paused
-      clearMusicStatus();
     }
-  }, [currentTrack?.id, currentTrack, isPlaying, isStatusEnabled, hasUserInteracted, duration, publishMusicStatus, clearMusicStatus]);
+    
+    // Clear status when paused (but don't update lastPublishedTrackId)
+    if (isStatusEnabled && !isPlaying && lastPublishedTrackId.current) {
+      clearMusicStatus();
+      // Reset to prevent duplicate clears
+      lastPublishedTrackId.current = null;
+    }
+  }, [currentTrack, isPlaying, isStatusEnabled, hasUserInteracted, duration, publishMusicStatus, clearMusicStatus]);
 
   const handleSeek = useCallback((value: number[]) => {
     const newTime = value[0];
@@ -248,16 +242,7 @@ export function PersistentMusicPlayer() {
         .then(() => {
           // Sync state only after successful play
           if (!isPlaying) togglePlay();
-          // Publish music status when user clicks play
-          if (isStatusEnabled && currentTrack) {
-            const trackUrl = currentTrack.id ? `https://nostrmusic.com/wavlake/${currentTrack.id}` : undefined;
-            publishMusicStatus({
-              title: currentTrack.title,
-              artist: currentTrack.artist,
-              duration: duration || undefined,
-              url: trackUrl
-            });
-          }
+          // Status publishing is handled by useEffect
         })
         .catch((_error) => {
           // Fall back to state update for loading scenarios
@@ -265,12 +250,9 @@ export function PersistentMusicPlayer() {
         });
     } else {
       togglePlay(); // Just pause
-      // Clear music status when user clicks pause
-      if (isStatusEnabled) {
-        clearMusicStatus();
-      }
+      // Status clearing is now handled by useEffect only
     }
-  }, [isPlaying, currentTrack, togglePlay, setHasUserInteracted, isStatusEnabled, duration, publishMusicStatus, clearMusicStatus]);
+  }, [isPlaying, currentTrack, togglePlay, setHasUserInteracted]);
 
   // Navigation handlers that mark user interaction
   const handleNextTrack = useCallback(() => {
@@ -284,12 +266,9 @@ export function PersistentMusicPlayer() {
   }, [previousTrack, setHasUserInteracted]);
 
   const handleClosePlayer = useCallback(() => {
-    // Clear music status when closing the player
-    if (isStatusEnabled) {
-      clearMusicStatus();
-    }
+    // Status clearing is handled by useEffect when isPlaying becomes false
     closePlayer();
-  }, [closePlayer, isStatusEnabled, clearMusicStatus]);
+  }, [closePlayer]);
 
   const handleVoteTrack = useCallback(() => {
     if (!user || !currentTrack) {
@@ -547,19 +526,19 @@ export function PersistentMusicPlayer() {
               ref={audioRef}
               onLoadStart={handleLoadStart}
               onLoadedData={handleLoadedData}
-              onLoadedMetadata={() => console.log('Audio metadata loaded')}
+              onLoadedMetadata={() => {}}
               onCanPlay={handleCanPlay}
-              onCanPlayThrough={() => console.log('Audio can play through without buffering')}
-              onPlay={() => console.log('Audio play event fired')}
-              onPlaying={() => console.log('Audio is now playing')}
-              onPause={() => console.log('Audio paused')}
+              onCanPlayThrough={() => {}}
+              onPlay={() => {}}
+              onPlaying={() => {}}
+              onPause={() => {}}
               onTimeUpdate={handleTimeUpdate}
               onEnded={handleEnded}
               onError={handleError}
-              onStalled={() => console.log('Audio stalled')}
-              onSuspend={() => console.log('Audio suspended')}
-              onWaiting={() => console.log('Audio waiting for data')}
-              onAbort={() => console.log('Audio loading aborted')}
+              onStalled={() => {}}
+              onSuspend={() => {}}
+              onWaiting={() => {}}
+              onAbort={() => {}}
               preload="metadata"
               style={{ display: 'none' }}
             />
@@ -744,19 +723,19 @@ export function PersistentMusicPlayer() {
             ref={audioRef}
             onLoadStart={handleLoadStart}
             onLoadedData={handleLoadedData}
-            onLoadedMetadata={() => console.log('Audio metadata loaded')}
+            onLoadedMetadata={() => {}}
             onCanPlay={handleCanPlay}
-            onCanPlayThrough={() => console.log('Audio can play through without buffering')}
-            onPlay={() => console.log('Audio play event fired')}
-            onPlaying={() => console.log('Audio is now playing')}
-            onPause={() => console.log('Audio paused')}
+            onCanPlayThrough={() => {}}
+            onPlay={() => {}}
+            onPlaying={() => {}}
+            onPause={() => {}}
             onTimeUpdate={handleTimeUpdate}
             onEnded={handleEnded}
             onError={handleError}
-            onStalled={() => console.log('Audio stalled')}
-            onSuspend={() => console.log('Audio suspended')}
-            onWaiting={() => console.log('Audio waiting for data')}
-            onAbort={() => console.log('Audio loading aborted')}
+            onStalled={() => {}}
+            onSuspend={() => {}}
+            onWaiting={() => {}}
+            onAbort={() => {}}
             preload="metadata"
           />
         </CardContent>

@@ -203,11 +203,21 @@ export default function WeeklySongsLeaderboard() {
     }
   }, [musicTracks]);
 
-  // Play track function
+  // Play track function - creates a playlist from all leaderboard tracks
   const handlePlayTrack = useCallback(async (voteData: VoteData) => {
-    const musicTrack = await convertVoteToMusicTrack(voteData);
-    if (musicTrack) {
-      playTrack(musicTrack, [musicTrack]);
+    // Convert all leaderboard tracks to MusicTrack format for the playlist
+    const playlistPromises = leaderboardData.map(vote => convertVoteToMusicTrack(vote));
+    const playlistResults = await Promise.all(playlistPromises);
+    
+    // Filter out any failed conversions
+    const playlist = playlistResults.filter((track): track is MusicTrack => track !== null);
+    
+    // Find the index of the clicked track in the playlist
+    const clickedTrackIndex = playlist.findIndex(track => track.id === voteData.trackId);
+    
+    if (clickedTrackIndex >= 0 && playlist.length > 0) {
+      // Play the clicked track with the full leaderboard as playlist
+      playTrack(playlist[clickedTrackIndex], playlist, clickedTrackIndex);
     } else {
       toast({
         title: 'Failed to Play Track',
@@ -215,7 +225,7 @@ export default function WeeklySongsLeaderboard() {
         variant: 'destructive',
       });
     }
-  }, [convertVoteToMusicTrack, toast, playTrack]);
+  }, [leaderboardData, convertVoteToMusicTrack, toast, playTrack]);
 
 
 

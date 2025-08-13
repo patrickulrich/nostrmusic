@@ -9,6 +9,10 @@ import { MusicPlayer } from '@/components/music/MusicPlayer';
 import { useWavlakePicks, useTracksFromList } from '@/hooks/useMusicLists';
 import { useWavlakeArtist } from '@/hooks/useWavlake';
 import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
+import { useMusicStatus } from '@/hooks/useMusicStatus';
+
+// Peachy's pubkey
+const PEACHY_PUBKEY = "0e7b8b91f952a3c994f51d2a69f0b62c778958aad855e10fef8813bc382ed820";
 import QRCode from 'qrcode';
 import { 
   X, 
@@ -27,9 +31,10 @@ export default function PartyView() {
   });
 
   const navigate = useNavigate();
-  const { data: wavlakeList, isLoading: isListLoading } = useWavlakePicks();
+  const { data: wavlakeList, isLoading: isListLoading } = useWavlakePicks(PEACHY_PUBKEY);
   const { data: tracksOriginal = [], isLoading: isTracksLoading } = useTracksFromList(wavlakeList?.tracks || []);
   const { closePlayer } = useGlobalMusicPlayer();
+  const { clearMusicStatus } = useMusicStatus();
   
   // Reverse tracks for countdown effect (start from last, count down to #1)
   const tracks = [...tracksOriginal].reverse();
@@ -215,13 +220,16 @@ export default function PartyView() {
 
   // Exit fullscreen and navigate back
   const handleClose = useCallback(() => {
+    // Clear music status when exiting party view
+    clearMusicStatus();
+    
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {
         // Fallback if exit fullscreen fails
       });
     }
     navigate('/');
-  }, [navigate]);
+  }, [navigate, clearMusicStatus]);
 
   // Toggle fullscreen
   const toggleFullscreen = useCallback(async () => {

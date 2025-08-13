@@ -38,6 +38,7 @@ export interface MusicPlayerRef {
 
 export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track, onNext, onPrevious, onClose, autoPlay = false, className }, ref) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const lastPublishedTrackId = useRef<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -170,16 +171,7 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
       try {
         await audio.play();
         setIsPlaying(true);
-        // Publish music status when auto-play starts
-        if (isStatusEnabled && track) {
-          const trackUrl = track.id ? `https://nostrmusic.com/wavlake/${track.id}` : undefined;
-          publishMusicStatus({
-            title: track.title,
-            artist: track.artist,
-            duration: track.duration || undefined,
-            url: trackUrl
-          });
-        }
+        // Status publishing is handled by useEffect
       } catch (error) {
         console.error('Auto-play failed:', error);
         // Auto-play might be blocked by browser policy
@@ -191,21 +183,33 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
     return () => clearTimeout(timer);
   }, [track.id, autoPlay, playbackUrl, isStatusEnabled, track, publishMusicStatus]);
 
-  // Publish music status when track changes OR when playback state changes
+  // Publish music status only when track actually changes
   useEffect(() => {
-    if (isStatusEnabled && track && isPlaying) {
-      const trackUrl = track.id ? `https://nostrmusic.com/wavlake/${track.id}` : undefined;
+    const currentTrackId = track?.id || null;
+    
+    // Only publish if track ID actually changed and we should be playing
+    if (isStatusEnabled && currentTrackId && isPlaying && 
+        currentTrackId !== lastPublishedTrackId.current) {
+      
+      lastPublishedTrackId.current = currentTrackId;
+      const trackUrl = `https://nostrmusic.com/wavlake/${currentTrackId}`;
       publishMusicStatus({
         title: track.title,
         artist: track.artist,
         duration: track.duration || undefined,
         url: trackUrl
       });
-    } else if (isStatusEnabled && !isPlaying) {
-      // Clear status when paused
-      clearMusicStatus();
     }
-  }, [track.id, track, isPlaying, isStatusEnabled, publishMusicStatus, clearMusicStatus]);
+  }, [track?.id, track.title, track.artist, track.duration, isPlaying, isStatusEnabled, publishMusicStatus]);
+
+  // Separate effect for clearing status when paused
+  useEffect(() => {
+    if (isStatusEnabled && !isPlaying && lastPublishedTrackId.current) {
+      clearMusicStatus();
+      // Reset to prevent duplicate clears
+      lastPublishedTrackId.current = null;
+    }
+  }, [isPlaying, isStatusEnabled, clearMusicStatus]);
 
   // Play/pause toggle
   const togglePlayPause = async () => {
@@ -216,23 +220,11 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
       if (isPlaying) {
         audio.pause();
         setIsPlaying(false);
-        // Clear music status when manually paused
-        if (isStatusEnabled) {
-          clearMusicStatus();
-        }
+        // Status clearing is handled by useEffect
       } else {
         await audio.play();
         setIsPlaying(true);
-        // Publish music status when manually started
-        if (isStatusEnabled && track) {
-          const trackUrl = track.id ? `https://nostrmusic.com/wavlake/${track.id}` : undefined;
-          publishMusicStatus({
-            title: track.title,
-            artist: track.artist,
-            duration: track.duration || undefined,
-            url: trackUrl
-          });
-        }
+        // Status publishing is handled by useEffect
       }
     } catch (error) {
       console.error('Playback error:', error);
@@ -277,6 +269,17 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
     } else {
       audio.volume = 0;
       setIsMuted(true);
+    }
+  };
+
+  // Handle close with status clearing
+  const handleClose = () => {
+    if (isStatusEnabled && lastPublishedTrackId.current) {
+      clearMusicStatus();
+      lastPublishedTrackId.current = null;
+    }
+    if (onClose) {
+      onClose();
     }
   };
 
@@ -388,7 +391,7 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={onClose}
+                      onClick={handleClose}
                       className="h-8 w-8 p-0"
                       title="Close Player"
                     >

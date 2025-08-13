@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MusicPlayer, type MusicPlayerRef } from '@/components/music/MusicPlayer';
 import { useWavlakeRankings } from '@/hooks/useWavlake';
 import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
+import { useMusicStatus } from '@/hooks/useMusicStatus';
 import type { MusicTrack } from '@/hooks/useMusicLists';
 import type { WavlakeTrack } from '@/lib/wavlake';
 import { 
@@ -31,6 +32,7 @@ export default function WavlakeRadio() {
   const navigate = useNavigate();
   const musicPlayerRef = useRef<MusicPlayerRef>(null);
   const { closePlayer } = useGlobalMusicPlayer();
+  const { clearMusicStatus } = useMusicStatus();
   
   // Filter state
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
@@ -123,8 +125,10 @@ export default function WavlakeRadio() {
   }, [trendingTracks, convertToMusicTrack, shuffleArray, closePlayer]);
 
   const handleClose = useCallback(() => {
+    // Clear music status when exiting radio
+    clearMusicStatus();
     navigate('/');
-  }, [navigate]);
+  }, [navigate, clearMusicStatus]);
   
   // Player controls
   const handleNext = useCallback(() => {

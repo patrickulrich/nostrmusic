@@ -35,7 +35,6 @@ export function MusicPlayerProvider({ children }: MusicPlayerProviderProps) {
       return;
     }
 
-    console.log('Playing track:', { title: track.title, artist: track.artist, mediaUrl });
     
     setState(prev => ({
       ...prev,

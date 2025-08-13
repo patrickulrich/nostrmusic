@@ -109,7 +109,6 @@ export function WavlakeZapDialog({ track, children, className }: WavlakeZapDialo
       const finalAmount = typeof amount === 'string' ? parseInt(amount, 10) : amount;
       
       // Step 1: Get LNURL from Wavlake API
-      console.log('Requesting LNURL for track:', track.id, 'with appId: nostrmusic');
       const lnurlResponse = await wavlakeAPI.getLnurl(track.id, 'nostrmusic');
       
       if (!lnurlResponse.lnurl) {
