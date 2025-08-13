@@ -29,7 +29,7 @@ export function Sidebar({ open, onClose, isPeachy = false }: SidebarProps) {
         <SheetContent side="left" className="w-80 p-0">
           <SheetHeader className="px-6 py-4 border-b">
             <SheetTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Peachy
+              NostrMusic
             </SheetTitle>
           </SheetHeader>
           <nav className="flex flex-col p-4">
