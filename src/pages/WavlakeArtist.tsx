@@ -5,15 +5,74 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWavlakeArtist } from '@/hooks/useWavlake';
-import { Music, ExternalLink, Calendar, User, Play, Disc3 } from 'lucide-react';
+import { Music, Calendar, User, Play, Disc3, Zap } from 'lucide-react';
 import { useSeoMeta } from '@unhead/react';
 import { ArrowLeft } from 'lucide-react';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';
+import { WavlakeZapDialog } from '@/components/music/WavlakeZapDialog';
+import { MusicTrack } from '@/hooks/useMusicLists';
+import { useQuery } from '@tanstack/react-query';
 
 export default function WavlakeArtist() {
   const { artistId } = useParams<{ artistId: string }>();
   const { data: artist, isLoading, error } = useWavlakeArtist(artistId);
+  
+  // Get the most recent track from the most recent album for zapping
+  const { data: artistTrack } = useQuery({
+    queryKey: ['artist-track-for-zap', artistId],
+    queryFn: async () => {
+      if (!artist || artist.albums.length === 0) return null;
+      
+      // Sort albums by release date (newest first)
+      const sortedAlbums = [...artist.albums].sort((a, b) => 
+        new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()
+      );
+      
+      // Get the first track from the most recent album
+      const mostRecentAlbum = sortedAlbums[0];
+      
+      try {
+        const { wavlakeAPI } = await import('@/lib/wavlake');
+        const albumData = await wavlakeAPI.getAlbum(mostRecentAlbum.id);
+        
+        if (albumData.tracks && albumData.tracks.length > 0) {
+          const track = albumData.tracks[0];
+          const musicTrack: MusicTrack = {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+            album: track.albumTitle,
+            duration: track.duration,
+            image: track.albumArtUrl || track.artistArtUrl,
+            mediaUrl: track.mediaUrl,
+            albumArtUrl: track.albumArtUrl,
+            artistArtUrl: track.artistArtUrl,
+            artistId: track.artistId,
+            albumId: track.albumId,
+            artistNpub: track.artistNpub,
+            msatTotal: track.msatTotal,
+            releaseDate: track.releaseDate,
+            description: `Track from ${track.artist} • Album: ${track.albumTitle}`,
+            publishedAt: new Date(track.releaseDate).getTime() / 1000,
+            urls: [{
+              url: track.mediaUrl,
+              mimeType: 'audio/mpeg',
+              quality: 'stream'
+            }],
+            createdAt: Math.floor(Date.now() / 1000),
+            pubkey: track.artistNpub,
+          };
+          return musicTrack;
+        }
+      } catch (error) {
+        console.error('Failed to fetch track for artist zap:', error);
+      }
+      
+      return null;
+    },
+    enabled: !!artist && artist.albums.length > 0,
+  });
   
   // Get Nostr profile if artistNpub is available
   const author = useAuthor(artist?.artistNpub);
@@ -122,16 +181,17 @@ export default function WavlakeArtist() {
                       <Music className="h-3 w-3 mr-1" />
                       {artist.albums.length} Album{artist.albums.length !== 1 ? 's' : ''}
                     </Badge>
-                    <Button variant="outline" size="sm" asChild>
-                      <a 
-                        href={`https://wavlake.com/artist/${artistId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    {artistTrack && (
+                      <WavlakeZapDialog 
+                        track={artistTrack}
+                        className="inline-flex"
                       >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        View on Wavlake
-                      </a>
-                    </Button>
+                        <Button variant="outline" size="sm">
+                          <Zap className="h-3 w-3 mr-1" />
+                          Zap Artist
+                        </Button>
+                      </WavlakeZapDialog>
+                    )}
                   </div>
 
                   {artist.bio && (
@@ -201,22 +261,12 @@ export default function WavlakeArtist() {
                         </div>
                         
                         <div className="flex items-center gap-2">
-                          <Link to={`/album/${album.id}`} className="flex-1">
+                          <Link to={`/album/${album.id}`} className="w-full">
                             <Button variant="outline" className="w-full">
                               <Play className="h-3 w-3 mr-2" />
                               View Album
                             </Button>
                           </Link>
-                          <Button variant="outline" size="sm" asChild>
-                            <a 
-                              href={`https://wavlake.com/album/${album.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="View on Wavlake"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -228,19 +278,9 @@ export default function WavlakeArtist() {
                 <div className="text-center py-12">
                   <Disc3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">No Albums Found</h3>
-                  <p className="text-muted-foreground mb-4">
+                  <p className="text-muted-foreground">
                     This artist hasn't released any albums on Wavlake yet.
                   </p>
-                  <Button variant="outline" asChild>
-                    <a 
-                      href={`https://wavlake.com/artist/${artistId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink className="h-3 w-3 mr-2" />
-                      View on Wavlake
-                    </a>
-                  </Button>
                 </div>
               )}
             </CardContent>

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWavlakeAlbum } from '@/hooks/useWavlake';
-import { Music, Calendar, Play, Clock, Zap, ExternalLink } from 'lucide-react';
+import { Music, Calendar, Play, Clock, Zap } from 'lucide-react';
 import { MusicTrack } from '@/hooks/useMusicLists';
 import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
 import { useSeoMeta } from '@unhead/react';
@@ -175,16 +175,17 @@ export default function WavlakeAlbum() {
                       <Play className="h-4 w-4 mr-2" />
                       Play Album
                     </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <a 
-                        href={`https://wavlake.com/album/${albumId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    {musicTracks.length > 0 && (
+                      <WavlakeZapDialog 
+                        track={musicTracks[0]}
+                        className="inline-flex"
                       >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        View on Wavlake
-                      </a>
-                    </Button>
+                        <Button variant="outline" size="sm">
+                          <Zap className="h-3 w-3 mr-1" />
+                          Zap Artist
+                        </Button>
+                      </WavlakeZapDialog>
+                    )}
                   </div>
                 </div>
               </div>
