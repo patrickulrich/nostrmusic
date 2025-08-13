@@ -85,6 +85,15 @@ export function WavlakeZapDialog({ track, children, className }: WavlakeZapDialo
   }, [open]);
 
   const handleGenerateInvoice = async () => {
+    if (!user) {
+      toast({
+        title: 'Login Required',
+        description: 'Please log in to zap tracks',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (!track.id) {
       toast({
         title: 'Error',
@@ -204,10 +213,6 @@ export function WavlakeZapDialog({ track, children, className }: WavlakeZapDialo
     }
   };
 
-  // Don't show if no user
-  if (!user) {
-    return null;
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
