@@ -354,7 +354,7 @@ export function PersistentMusicPlayer() {
                   </Link>
                   {currentTrack.artistId && (
                     <Link
-                      to={`/wavlake/artist/${currentTrack.artistId}`}
+                      to={`/artist/${currentTrack.artistId}`}
                       className="text-xs text-muted-foreground hover:text-primary transition-colors block"
                     >
                       {currentTrack.artist}
@@ -526,7 +526,7 @@ export function PersistentMusicPlayer() {
                 </Link>
                 {currentTrack.artistId && (
                   <Link
-                    to={`/wavlake/artist/${currentTrack.artistId}`}
+                    to={`/artist/${currentTrack.artistId}`}
                     className="text-xs text-muted-foreground truncate hover:text-primary transition-colors block"
                   >
                     {currentTrack.artist}

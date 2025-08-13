@@ -341,17 +341,6 @@ const WavlakeTrack = () => {
             </CardContent>
           </Card>
 
-          {/* Music Player Info */}
-          {isTrackCurrent(trackData.id) && (
-            <Card>
-              <CardContent className="py-4 px-6">
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Music className="h-4 w-4" />
-                  This track is {isTrackPlaying(trackData.id) ? 'currently playing' : 'loaded'} in the music player
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Track Description */}
           {trackData.description && (

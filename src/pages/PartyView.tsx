@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MusicPlayer } from '@/components/music/MusicPlayer';
 import { useWavlakePicks, useTracksFromList } from '@/hooks/useMusicLists';
 import { useWavlakeArtist } from '@/hooks/useWavlake';
 import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
@@ -28,14 +29,17 @@ export default function PartyView() {
   const navigate = useNavigate();
   const { data: wavlakeList, isLoading: isListLoading } = useWavlakePicks();
   const { data: tracksOriginal = [], isLoading: isTracksLoading } = useTracksFromList(wavlakeList?.tracks || []);
-  const { playTracksFromList, currentTrack, closePlayer } = useGlobalMusicPlayer();
+  const { closePlayer } = useGlobalMusicPlayer();
   
   // Reverse tracks for countdown effect (start from last, count down to #1)
   const tracks = [...tracksOriginal].reverse();
   
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true); // Auto-play enabled
   const [zapQrCode, setZapQrCode] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  const currentTrack = tracks[currentTrackIndex];
   const isLoading = isListLoading || isTracksLoading;
   
   // Calculate position number (counting down from total to 1)
@@ -151,16 +155,29 @@ export default function PartyView() {
     generateZapQr();
   }, [currentTrack]);
 
+  // Auto-advance to next track
+  const handleNext = useCallback(() => {
+    if (tracks.length === 0) return;
+    
+    const nextIndex = (currentTrackIndex + 1) % tracks.length;
+    setCurrentTrackIndex(nextIndex);
+    setIsPlaying(true);
+  }, [currentTrackIndex, tracks.length]);
+
+  const handlePrevious = useCallback(() => {
+    if (tracks.length === 0) return;
+    
+    const prevIndex = currentTrackIndex === 0 ? tracks.length - 1 : currentTrackIndex - 1;
+    setCurrentTrackIndex(prevIndex);
+    setIsPlaying(true);
+  }, [currentTrackIndex, tracks.length]);
+
   // Auto-play management
   useEffect(() => {
     if (tracks.length > 0 && !currentTrack) {
-      // Stop any current global player first
-      closePlayer();
       setCurrentTrackIndex(0);
-      // Start playing the party playlist
-      playTracksFromList(tracks, 0);
     }
-  }, [tracks, currentTrack, playTracksFromList, closePlayer]);
+  }, [tracks, currentTrack]);
 
   // Stop global player when entering party mode
   useEffect(() => {
@@ -420,6 +437,21 @@ export default function PartyView() {
         </div>
       </div>
 
+
+      {/* Bottom section - Music Player */}
+      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-6">
+        <div className="container mx-auto max-w-4xl">
+          {currentTrack && (
+            <MusicPlayer
+              track={currentTrack}
+              autoPlay={isPlaying}
+              onNext={tracks.length > 1 ? handleNext : undefined}
+              onPrevious={tracks.length > 1 ? handlePrevious : undefined}
+              className="shadow-lg"
+            />
+          )}
+        </div>
+      </div>
 
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />

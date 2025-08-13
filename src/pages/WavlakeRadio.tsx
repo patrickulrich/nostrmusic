@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MusicPlayer, type MusicPlayerRef } from '@/components/music/MusicPlayer';
 import { useWavlakeRankings } from '@/hooks/useWavlake';
 import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
 import type { MusicTrack } from '@/hooks/useMusicLists';
@@ -28,7 +29,8 @@ export default function WavlakeRadio() {
   });
 
   const navigate = useNavigate();
-  const { playTracksFromList, currentTrack, closePlayer } = useGlobalMusicPlayer();
+  const musicPlayerRef = useRef<MusicPlayerRef>(null);
+  const { closePlayer } = useGlobalMusicPlayer();
   
   // Filter state
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
@@ -38,6 +40,9 @@ export default function WavlakeRadio() {
   // Player state
   const [radioPlaylist, setRadioPlaylist] = useState<MusicTrack[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  
+  const currentTrack = radioPlaylist[currentTrackIndex];
 
 
   // Popular genres for filtering (same as explore-wavlake)
@@ -114,14 +119,29 @@ export default function WavlakeRadio() {
     setRadioPlaylist(shuffledTracks);
     setCurrentTrackIndex(0);
     setIsRadioStarted(true);
-    
-    // Start playing with global player
-    playTracksFromList(shuffledTracks, 0);
-  }, [trendingTracks, convertToMusicTrack, shuffleArray, playTracksFromList, closePlayer]);
+    setIsPlaying(true);
+  }, [trendingTracks, convertToMusicTrack, shuffleArray, closePlayer]);
 
   const handleClose = useCallback(() => {
     navigate('/');
   }, [navigate]);
+  
+  // Player controls
+  const handleNext = useCallback(() => {
+    if (radioPlaylist.length === 0) return;
+    
+    const nextIndex = (currentTrackIndex + 1) % radioPlaylist.length;
+    setCurrentTrackIndex(nextIndex);
+    setIsPlaying(true);
+  }, [currentTrackIndex, radioPlaylist.length]);
+
+  const handlePrevious = useCallback(() => {
+    if (radioPlaylist.length === 0) return;
+    
+    const prevIndex = currentTrackIndex === 0 ? radioPlaylist.length - 1 : currentTrackIndex - 1;
+    setCurrentTrackIndex(prevIndex);
+    setIsPlaying(true);
+  }, [currentTrackIndex, radioPlaylist.length]);
 
   // Stop global player when entering radio mode
   useEffect(() => {
@@ -310,6 +330,7 @@ export default function WavlakeRadio() {
                   const shuffledTracks = shuffleArray(radioPlaylist);
                   setRadioPlaylist(shuffledTracks);
                   setCurrentTrackIndex(0);
+                  setIsPlaying(true);
                 }}
                 className="flex items-center gap-2"
               >
@@ -330,6 +351,19 @@ export default function WavlakeRadio() {
         )}
       </div>
 
+      {/* Music Player */}
+      {currentTrack && isRadioStarted && (
+        <div className="fixed bottom-0 left-0 right-0">
+          <MusicPlayer
+            ref={musicPlayerRef}
+            track={currentTrack}
+            autoPlay={isPlaying}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+            onClose={handleClose}
+          />
+        </div>
+      )}
     </div>
   );
 }
