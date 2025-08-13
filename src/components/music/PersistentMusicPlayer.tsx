@@ -205,7 +205,7 @@ export function PersistentMusicPlayer() {
     audioRef.current.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
-  // Publish music status when track changes and is playing
+  // Publish music status when track changes OR when playback state changes
   useEffect(() => {
     if (isStatusEnabled && currentTrack && isPlaying && hasUserInteracted) {
       const trackUrl = currentTrack.id ? `https://nostrmusic.com/wavlake/${currentTrack.id}` : undefined;
@@ -215,8 +215,11 @@ export function PersistentMusicPlayer() {
         duration: duration || undefined,
         url: trackUrl
       });
+    } else if (isStatusEnabled && !isPlaying) {
+      // Clear status when paused
+      clearMusicStatus();
     }
-  }, [currentTrack?.id, isStatusEnabled, isPlaying, hasUserInteracted, duration, publishMusicStatus]);
+  }, [currentTrack?.id, currentTrack, isPlaying, isStatusEnabled, hasUserInteracted, duration, publishMusicStatus, clearMusicStatus]);
 
   const handleSeek = useCallback((value: number[]) => {
     const newTime = value[0];

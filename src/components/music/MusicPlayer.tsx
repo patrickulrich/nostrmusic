@@ -191,7 +191,7 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
     return () => clearTimeout(timer);
   }, [track.id, autoPlay, playbackUrl, isStatusEnabled, track, publishMusicStatus]);
 
-  // Publish music status when track changes and is playing
+  // Publish music status when track changes OR when playback state changes
   useEffect(() => {
     if (isStatusEnabled && track && isPlaying) {
       const trackUrl = track.id ? `https://nostrmusic.com/wavlake/${track.id}` : undefined;
@@ -201,8 +201,11 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
         duration: track.duration || undefined,
         url: trackUrl
       });
+    } else if (isStatusEnabled && !isPlaying) {
+      // Clear status when paused
+      clearMusicStatus();
     }
-  }, [track.id, isStatusEnabled, isPlaying, publishMusicStatus]);
+  }, [track.id, track, isPlaying, isStatusEnabled, publishMusicStatus, clearMusicStatus]);
 
   // Play/pause toggle
   const togglePlayPause = async () => {
