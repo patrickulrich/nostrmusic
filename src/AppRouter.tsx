@@ -8,6 +8,7 @@ import WavlakeAlbum from "./pages/WavlakeAlbum";
 import WavlakeTrack from "./pages/WavlakeTrack";
 import WavlakeRadio from "./pages/WavlakeRadio";
 import Leaderboard from "./pages/Leaderboard";
+import LeaderboardRadio from "./pages/LeaderboardRadio";
 import PartyView from "./pages/PartyView";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { EditProfile } from "./pages/EditProfile";
@@ -32,6 +33,7 @@ export function AppRouter() {
         <Route path="/" element={<Index />} />
         <Route path="/radio" element={<WavlakeRadio />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/leaderboard-radio" element={<LeaderboardRadio />} />
         <Route path="/party-view" element={<PartyView />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/edit-profile" element={<EditProfile />} />

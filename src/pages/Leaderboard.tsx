@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VotersModal } from '@/components/VotersModal';
 import { useToast } from '@/hooks/useToast';
-import { Trophy, Heart, Play, Music, Zap } from 'lucide-react';
+import { Trophy, Heart, Play, Music, Zap, Radio } from 'lucide-react';
 import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
 import type { MusicTrack } from '@/hooks/useMusicLists';
 import type { NostrEvent } from '@nostrify/nostrify';
@@ -48,16 +48,20 @@ export default function WeeklySongsLeaderboard() {
   const { toast } = useToast();
   
 
-  // Query all voting events
+  // Query voting events from the last week only
   const { data: voteEvents = [], isLoading: isVotesLoading } = useQuery({
-    queryKey: ['weekly-song-votes'],
+    queryKey: ['weekly-song-votes', Math.floor(Date.now() / (1000 * 60 * 60 * 24))], // Cache key changes daily
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(10000)]);
       
-      // Get all Kind 30003 events with d="peachy-song-vote"
+      // Calculate timestamp for 7 days ago
+      const oneWeekAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
+      
+      // Get Kind 30003 events with d="peachy-song-vote" from the last week
       const events = await nostr.query([{
         kinds: [30003],
         '#d': ['peachy-song-vote'],
+        since: oneWeekAgo,
         limit: 1000
       }], { signal });
       
@@ -237,10 +241,18 @@ export default function WeeklySongsLeaderboard() {
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4 flex items-center gap-3">
-            <Trophy className="h-10 w-10 text-primary" />
-            Weekly Songs Leaderboard
-          </h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <h1 className="text-4xl font-bold flex items-center gap-3">
+              <Trophy className="h-10 w-10 text-primary" />
+              Weekly Songs Leaderboard
+            </h1>
+            <Button asChild size="lg" className="w-full sm:w-auto">
+              <Link to="/leaderboard-radio" className="flex items-center justify-center gap-2">
+                <Radio className="h-5 w-5" />
+                Leaderboard Radio
+              </Link>
+            </Button>
+          </div>
           <p className="text-lg text-muted-foreground">
             The top 10 most voted songs of the week from our community.
           </p>
