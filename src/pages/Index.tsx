@@ -524,7 +524,7 @@ const Index = () => {
                                 </div>
                               </div>
                               {/* Mobile buttons - shown below content */}
-                              <div className="flex sm:hidden flex-wrap items-center gap-2 mt-3 ml-11">
+                              <div className="flex sm:hidden flex-wrap items-center gap-2 mt-3 px-4">
                                 <Button
                                   size="sm"
                                   variant={trackIsPlaying ? "default" : "outline"}
