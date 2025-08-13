@@ -9,14 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VotersModal } from '@/components/VotersModal';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useToast } from '@/hooks/useToast';
-import { useNostrPublish } from '@/hooks/useNostrPublish';
-import { useQueryClient } from '@tanstack/react-query';
-import { Trophy, Heart, Play, Plus, Music } from 'lucide-react';
+import { Trophy, Heart, Play, Music, Zap } from 'lucide-react';
 import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
 import type { MusicTrack } from '@/hooks/useMusicLists';
 import type { NostrEvent } from '@nostrify/nostrify';
+import { WavlakeZapDialog } from '@/components/music/WavlakeZapDialog';
 
 interface VoteData {
   trackId: string;
@@ -34,7 +32,6 @@ export default function WeeklySongsLeaderboard() {
   });
 
   const { playTrack, currentTrack, isPlaying } = useGlobalMusicPlayer();
-  const [addingTrackIds, setAddingTrackIds] = useState<Set<string>>(new Set());
   const [votersModalData, setVotersModalData] = useState<{
     open: boolean;
     trackTitle: string;
@@ -47,11 +44,8 @@ export default function WeeklySongsLeaderboard() {
     voters: [],
   });
 
-  const { user } = useCurrentUser();
   const { nostr } = useNostr();
   const { toast } = useToast();
-  const { mutateAsync: publishEvent } = useNostrPublish();
-  const queryClient = useQueryClient();
   
 
   // Query all voting events
@@ -223,130 +217,6 @@ export default function WeeklySongsLeaderboard() {
     }
   }, [convertVoteToMusicTrack, toast, playTrack]);
 
-  // Add to picks function
-  const addToPicks = useCallback(async (voteData: VoteData) => {
-    if (!user) return;
-
-    // Prevent multiple simultaneous additions of the same track
-    if (addingTrackIds.has(voteData.trackId)) {
-      return;
-    }
-
-    const musicTrack = await convertVoteToMusicTrack(voteData);
-    if (!musicTrack) {
-      toast({
-        title: 'Failed to Add Track',
-        description: 'Could not load track details.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      setAddingTrackIds(prev => new Set(prev).add(voteData.trackId));
-      
-      // Get current picks data for optimistic update
-      const currentPicksData = queryClient.getQueryData(['wavlake-picks', user.pubkey]);
-      
-      // Check if track is already added to prevent duplicates
-      if (currentPicksData && typeof currentPicksData === 'object' && 'tracks' in currentPicksData) {
-        const currentTracks = (currentPicksData as { tracks?: MusicTrack[] }).tracks || [];
-        const isAlreadyAdded = currentTracks.some((t) => t.id === musicTrack.id);
-        if (isAlreadyAdded) {
-          toast({
-            title: 'Track Already in Picks',
-            description: `"${musicTrack.title}" is already in your weekly picks.`,
-            variant: 'destructive',
-          });
-          return;
-        }
-      }
-
-      // Optimistically update the cache immediately
-      queryClient.setQueryData(['wavlake-picks', user.pubkey], (oldData: unknown) => {
-        if (!oldData || typeof oldData !== 'object' || !('tracks' in oldData)) {
-          return {
-            tracks: [musicTrack],
-            title: "Weekly Wavlake Picks",
-            updatedAt: Math.floor(Date.now() / 1000)
-          };
-        }
-        
-        const existingData = oldData as { tracks?: MusicTrack[] };
-        const currentTracks = existingData.tracks || [];
-        
-        // Double-check for duplicates during optimistic update
-        const isAlreadyInOptimisticData = currentTracks.some((t) => t.id === musicTrack.id);
-        if (isAlreadyInOptimisticData) {
-          // Return the data unchanged if duplicate found
-          return existingData;
-        }
-        
-        return {
-          ...existingData,
-          tracks: [...currentTracks, musicTrack],
-          updatedAt: Math.floor(Date.now() / 1000)
-        };
-      });
-
-      // Show success toast immediately
-      toast({
-        title: 'Track Added to Picks',
-        description: `Added "${musicTrack.title}" by ${musicTrack.artist} to your weekly picks.`,
-      });
-
-      // Then publish to Nostr in the background
-      const { addTrackToPicksSimple } = await import('@/lib/addTrackToPicks');
-      try {
-        const success = await addTrackToPicksSimple(musicTrack, publishEvent, (options) => {
-          // Only show error toasts, not success toasts (to prevent duplicates)
-          if (options.variant === 'destructive') {
-            toast(options);
-          }
-        }, queryClient);
-        
-        if (!success) {
-          // If addTrackToPicksSimple returned false, revert the optimistic update
-          queryClient.invalidateQueries({
-            queryKey: ['wavlake-picks', user.pubkey]
-          });
-        }
-      } catch (publishError) {
-        console.warn('Failed to publish to Nostr:', publishError);
-        
-        // Revert the optimistic update on publish failure
-        queryClient.invalidateQueries({
-          queryKey: ['wavlake-picks', user.pubkey]
-        });
-        
-        toast({
-          title: 'Failed to Save to Nostr',
-          description: 'Track was added locally but could not be saved to Nostr.',
-          variant: 'destructive',
-        });
-      }
-
-    } catch (error) {
-      console.error('Failed to add track to picks:', error);
-      
-      // Revert the optimistic update on error
-      queryClient.invalidateQueries({
-        queryKey: ['wavlake-picks', user.pubkey]
-      });
-      
-      toast({
-        title: 'Failed to Add Track',
-        description: 'Could not add track to your picks. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setAddingTrackIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(voteData.trackId);
-        return newSet;
-      });
-    }
-  }, [user, convertVoteToMusicTrack, toast, addingTrackIds, queryClient, publishEvent]);
 
 
   // Remove Peachy-only restriction - page is now visible to everyone
@@ -467,17 +337,15 @@ export default function WeeklySongsLeaderboard() {
                             <div className="flex items-center gap-2 mt-2">
                               <Badge 
                                 variant="outline" 
-                                className={`text-xs flex items-center gap-1 ${
-                                  user ? 'cursor-pointer hover:bg-muted transition-colors' : ''
-                                }`}
-                                onClick={user ? () => {
+                                className="text-xs flex items-center gap-1 cursor-pointer hover:bg-muted transition-colors"
+                                onClick={() => {
                                   setVotersModalData({
                                     open: true,
                                     trackTitle: vote.trackTitle,
                                     trackArtist: vote.trackArtist,
                                     voters: vote.voters,
                                   });
-                                } : undefined}
+                                }}
                               >
                                 <Heart className="h-3 w-3 text-red-500" />
                                 {vote.votes} vote{vote.votes !== 1 ? 's' : ''}
@@ -499,20 +367,19 @@ export default function WeeklySongsLeaderboard() {
                               {trackIsPlaying ? 'Playing' : 'Play'}
                             </Button>
                             
-                            {user && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => addToPicks(vote)}
-                                disabled={addingTrackIds.has(vote.trackId)}
+                            {musicTracks.get(vote.trackId) && (
+                              <WavlakeZapDialog 
+                                track={musicTracks.get(vote.trackId)!}
+                                className="inline-flex"
                               >
-                                {addingTrackIds.has(vote.trackId) ? (
-                                  <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin mr-1" />
-                                ) : (
-                                  <Plus className="h-3 w-3 mr-1" />
-                                )}
-                                Add to Picks
-                              </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  <Zap className="h-3 w-3 mr-1" />
+                                  Zap
+                                </Button>
+                              </WavlakeZapDialog>
                             )}
                           </div>
                         </div>
@@ -532,20 +399,19 @@ export default function WeeklySongsLeaderboard() {
                             {trackIsPlaying ? 'Playing' : 'Play'}
                           </Button>
                           
-                          {user && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addToPicks(vote)}
-                              disabled={addingTrackIds.has(vote.trackId)}
+                          {musicTracks.get(vote.trackId) && (
+                            <WavlakeZapDialog 
+                              track={musicTracks.get(vote.trackId)!}
+                              className="inline-flex"
                             >
-                              {addingTrackIds.has(vote.trackId) ? (
-                                <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin mr-1" />
-                              ) : (
-                                <Plus className="h-3 w-3 mr-1" />
-                              )}
-                              Add to Picks
-                            </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                              >
+                                <Zap className="h-3 w-3 mr-1" />
+                                Zap
+                              </Button>
+                            </WavlakeZapDialog>
                           )}
                         </div>
                       </CardContent>
