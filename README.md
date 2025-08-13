@@ -11,15 +11,26 @@ A decentralized music discovery platform built entirely on Nostr protocols, feat
 - **📻 Wavlake Radio** - Custom Bitcoin music radio station with genre filtering and time period selection
 - **🎶 Party Mode** - Full-screen immersive music experience with artist info and Lightning QR codes for zapping
 - **🏆 Weekly Songs Leaderboard** - Community-driven voting system for top tracks using Nostr events
+- **📻 Leaderboard Radio** - Fullscreen countdown experience featuring top voted tracks
 - **🎵 Music Discovery** - Browse trending tracks, search artists/albums, and discover Bitcoin music
 - **⚡ Lightning Zaps** - Direct LNURL integration with Wavlake for seamless Bitcoin payments to artists
 - **💡 Track Suggestions** - Users can suggest tracks privately to curators via encrypted NIP-17 messages
 
+### **Complete Profile System**
+- **👤 Rich Profile Pages** - Full user profiles with custom styling, location from metadata, last login tracking
+- **🎵 Profile Music Player** - Personal favorite tracks from voting history with global player integration
+- **👥 Friends & Social** - Real-time follower/following counts, friends lists with Nostr data
+- **📸 Media Galleries** - Dedicated pages for user's pictures (NIP-68) and videos (NIP-71)
+- **💭 User Status & Mood** - NIP-38 status updates with expiration times for music/mood sharing
+- **🏷️ Interests & Categories** - NIP-51 lists for interests, follow sets, and personality expression
+- **💌 Private Messaging** - Secure NIP-17 encrypted direct messages with NIP-44 encryption
+
 ### **Nostr Protocol Integration**
-- **Complete Profile System** - NIP-05 identity verification and profile management
+- **Complete Profile System** - NIP-05 identity verification and comprehensive profile management
 - **Social Features** - Follow/unfollow with NIP-02, threaded comments with NIP-22
 - **Lightning Zaps** - Support artists with instant Bitcoin payments via NIP-57
-- **Private Messages** - Secure track suggestions using NIP-17 with NIP-59 gift wrapping
+- **Private Messages** - Secure messaging using NIP-17 with NIP-59 gift wrapping and NIP-44 encryption
+- **User Status Updates** - NIP-38 status sharing with proper expiration times
 - **Client Attribution** - Automatic client tags on all published events for proper attribution
 - **NIP-19 Routing** - Direct access to Nostr content via npub, note, nevent, naddr URLs
 
@@ -77,6 +88,10 @@ src/
 │   │   ├── MainLayout.tsx        # Main app layout
 │   │   ├── Header.tsx            # Navigation header
 │   │   └── Sidebar.tsx           # Navigation sidebar
+│   ├── profile/                  # Profile system components
+│   │   ├── ProfileCard.tsx       # Main profile display
+│   │   ├── SendMessageDialog.tsx # NIP-17 private messaging
+│   │   └── FollowButton.tsx      # Follow/unfollow functionality
 │   └── notifications/            # Notification components
 ├── hooks/                        # Custom React hooks (25+ specialized hooks)
 │   ├── useNostr.ts               # Core Nostr integration
@@ -88,14 +103,19 @@ src/
 │   ├── useCurrentUser.ts         # Authentication state
 │   ├── useTrackSuggestionNotifications.ts # NIP-17 private messages
 │   └── ...                       # 17+ additional specialized hooks
-├── pages/                        # Page components (11 pages)
+├── pages/                        # Page components (15+ pages)
 │   ├── Index.tsx                 # Home page with music discovery
 │   ├── WavlakeRadio.tsx          # Custom radio station
 │   ├── PartyView.tsx             # Full-screen music player
 │   ├── Leaderboard.tsx           # Community voting leaderboard
+│   ├── LeaderboardRadio.tsx      # Fullscreen countdown experience
 │   ├── WavlakeTrack.tsx          # Individual track pages
 │   ├── WavlakeArtist.tsx         # Artist profiles
 │   ├── WavlakeAlbum.tsx          # Album pages
+│   ├── ProfilePage.tsx           # Rich user profiles with social features
+│   ├── FriendsPage.tsx           # User friends/followers lists
+│   ├── PicsPage.tsx              # User picture gallery (NIP-68)
+│   ├── VideosPage.tsx            # User video gallery (NIP-71)
 │   ├── NotificationsPage.tsx     # Track suggestion notifications
 │   ├── EditProfile.tsx           # Profile editing
 │   ├── NIP19Page.tsx             # NIP-19 route handler
@@ -108,7 +128,8 @@ src/
 ├── lib/                          # Utility functions and libraries
 │   ├── wavlake.ts                # Wavlake API wrapper
 │   ├── addTrackToPicks.ts        # Playlist utilities
-│   ├── nip17-proper.ts           # NIP-17 implementation
+│   ├── nip17.ts                  # NIP-17 implementation with gift wrapping
+│   ├── genUserName.ts            # Username generation utilities
 │   └── utils.ts                  # General utilities
 ├── test/                         # Testing utilities
 │   ├── TestApp.tsx               # Provider wrapper for tests
@@ -126,13 +147,17 @@ src/
 | [NIP-02](https://github.com/nostr-protocol/nips/blob/master/02.md) | Follow Lists | ✅ Follow/unfollow functionality | `FollowButton`, profile pages |
 | [NIP-05](https://github.com/nostr-protocol/nips/blob/master/05.md) | NIP-05 Verification | ✅ Internet identifier verification | Profile editing and display |
 | [NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md) | Browser Extension | ✅ Web browser wallet integration | Authentication and signing |
-| [NIP-17](https://github.com/nostr-protocol/nips/blob/master/17.md) | Private DMs | ✅ Secure track suggestions | Track suggestion system |
+| [NIP-17](https://github.com/nostr-protocol/nips/blob/master/17.md) | Private DMs | ✅ Secure private messaging | `SendMessageDialog`, track suggestions |
 | [NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md) | bech32 Entities | ✅ Root-level routing for npub, note, etc. | `NIP19Page`, URL handling |
 | [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md) | Comments | ✅ Threaded comment system | `CommentsSection` on all content |
 | [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md) | Reactions | ✅ Like reactions | Comment and content reactions |
-| [NIP-51](https://github.com/nostr-protocol/nips/blob/master/51.md) | Lists | ✅ Music playlists and voting | Playlist management, leaderboard |
+| [NIP-38](https://github.com/nostr-protocol/nips/blob/master/38.md) | User Statuses | ✅ Music status with expiration | Profile mood/status, `useMusicStatus` |
+| [NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md) | Encryption | ✅ Versioned encryption standard | NIP-17 message encryption |
+| [NIP-51](https://github.com/nostr-protocol/nips/blob/master/51.md) | Lists | ✅ Music playlists, interests, follow sets | Playlist management, profile interests |
 | [NIP-57](https://github.com/nostr-protocol/nips/blob/master/57.md) | Lightning Zaps | ✅ Bitcoin micropayments | Artist support, `WavlakeZapDialog` |
 | [NIP-59](https://github.com/nostr-protocol/nips/blob/master/59.md) | Gift Wrapping | ✅ Privacy-preserving message sealing | Private message encryption |
+| [NIP-68](https://github.com/nostr-protocol/nips/blob/master/68.md) | Picture Posts | ✅ Image content with metadata | `PicsPage` user galleries |
+| [NIP-71](https://github.com/nostr-protocol/nips/blob/master/71.md) | Video Events | ✅ Video content with metadata | `VideosPage` user galleries |
 | [NIP-78](https://github.com/nostr-protocol/nips/blob/master/78.md) | App Data | ✅ Notification read status | `NotificationsPage` |
 | [NIP-89](https://github.com/nostr-protocol/nips/blob/master/89.md) | Client Tags | ✅ Automatic client attribution | All published events |
 
@@ -222,6 +247,26 @@ npm run deploy
 - Real-time vote counting
 - Weekly reset system
 - Voter transparency with modal details
+
+### **Leaderboard Radio (`/leaderboard-radio`)**
+- Fullscreen countdown experience for top voted tracks
+- Automatic playback of leaderboard winners
+- Immersive visual experience
+- Seamless integration with global music player
+
+### **Profile Pages (`/:npub`)**
+- Rich user profiles with custom styling and social features
+- Real-time follower/following/posts counts from Nostr
+- Profile music from user's voting favorites
+- NIP-38 status/mood display with expiration handling
+- NIP-51 interests and follow sets
+- Links to user's pictures, videos, and friends pages
+
+### **Media Galleries (`/:npub/pics`, `/:npub/videos`)**
+- **Pictures**: NIP-68 image posts with metadata extraction
+- **Videos**: NIP-71 video events (long-form and short-form)
+- Responsive grid layouts with hover effects
+- Direct integration with Nostr protocols
 
 ### **Track Pages (`/wavlake/:trackId`)**
 - Detailed track information

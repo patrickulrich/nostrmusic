@@ -32,7 +32,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           open={sidebarOpen} 
           onClose={() => setSidebarOpen(false)} 
         />
-        <main className={`flex-1 w-full lg:pl-64 ${playerPaddingClass}`}>
+        <main className={`flex-1 w-full ${playerPaddingClass}`}>
           {children}
         </main>
       </div>

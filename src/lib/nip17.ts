@@ -1,5 +1,6 @@
 // NIP-17 Private Direct Messages implementation using NIP-59 Gift Wrapping
 import type { NostrEvent } from '@nostrify/nostrify';
+import { generateSecretKey, getPublicKey, getEventHash, finalizeEvent, nip44 } from 'nostr-tools';
 
 type UnsignedEvent = {
   kind: number;
@@ -225,4 +226,86 @@ export async function createSimplifiedTrackSuggestion(
   };
 
   return await signer.signEvent(event);
+}
+
+// General NIP-17 Direct Message implementation
+export interface DirectMessageData {
+  message: string;
+  subject?: string;
+}
+
+export async function createNIP17DirectMessage(
+  messageData: DirectMessageData,
+  signer: { 
+    getPublicKey: () => Promise<string>; 
+    signEvent: (event: unknown) => Promise<NostrEvent>;
+    nip44: { encrypt: (pubkey: string, message: string) => Promise<string> }; // Required for NIP-17
+  },
+  recipientPubkey: string,
+  nostrEventPublisher: { event: (event: NostrEvent) => Promise<void> }
+): Promise<void> {
+
+  const senderPubkey = await signer.getPublicKey();
+
+  // 1. Create the rumor (unsigned kind 14 event) - per NIP-17, MUST NOT be signed
+  const rumor: Rumor = {
+    kind: 14,
+    content: messageData.message,
+    tags: [
+      ['p', recipientPubkey],
+      ...(messageData.subject ? [['subject', messageData.subject]] : []),
+    ],
+    created_at: now(),
+    pubkey: senderPubkey,
+    id: '', // Will be calculated
+  };
+
+  // Calculate rumor ID
+  rumor.id = getEventHash(rumor as NostrEvent);
+
+  // 2. Create the seal (kind 13 event) - encrypts rumor and IS signed by sender
+  const encryptedRumor = await signer.nip44.encrypt(recipientPubkey, JSON.stringify(rumor));
+
+  const sealEvent = {
+    kind: 13,
+    content: encryptedRumor,
+    created_at: randomNow(),
+    tags: [], // Per NIP-59: Tags MUST always be empty in a kind:13
+  };
+
+  const signedSeal = await signer.signEvent(sealEvent);
+
+  // 3. Create gift wraps (kind 1059) - one for recipient, one for sender
+  await createAndPublishGiftWrap(signedSeal, recipientPubkey, nostrEventPublisher);
+  await createAndPublishGiftWrap(signedSeal, senderPubkey, nostrEventPublisher); // Copy to sender
+}
+
+// Create gift wrap for a recipient
+async function createAndPublishGiftWrap(
+  sealEvent: NostrEvent,
+  recipientPubkey: string,
+  nostrEventPublisher: { event: (event: NostrEvent) => Promise<void> }
+): Promise<void> {
+  // Generate ephemeral key for gift wrapping
+  const ephemeralPrivateKey = generateSecretKey();
+  const ephemeralPubkey = getPublicKey(ephemeralPrivateKey);
+  
+  // Encrypt the seal with ephemeral key to recipient using nostr-tools directly
+  // since we need to encrypt with the ephemeral key, not the user's signer
+  const conversationKey = nip44.v2.utils.getConversationKey(ephemeralPrivateKey, recipientPubkey);
+  const encryptedSeal = nip44.v2.encrypt(JSON.stringify(sealEvent), conversationKey);
+
+  const giftWrapEvent = {
+    kind: 1059,
+    content: encryptedSeal,
+    created_at: randomNow(),
+    tags: [['p', recipientPubkey]],
+    pubkey: ephemeralPubkey,
+  };
+
+  // Sign with ephemeral private key using nostr-tools
+  const signedGiftWrap = finalizeEvent(giftWrapEvent, ephemeralPrivateKey);
+
+  // Publish directly without re-signing (already signed with ephemeral key)
+  await nostrEventPublisher.event(signedGiftWrap);
 }

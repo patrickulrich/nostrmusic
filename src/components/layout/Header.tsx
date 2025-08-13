@@ -32,7 +32,6 @@ export function Header({ onMenuClick, className }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={onMenuClick}
-            className="lg:hidden"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />

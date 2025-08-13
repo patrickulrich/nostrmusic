@@ -1,7 +1,7 @@
 // NOTE: This file is stable and usually should not be modified.
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
-import { ChevronDown, LogOut, UserIcon, UserPlus, Wallet, Edit, Settings } from 'lucide-react';
+import { ChevronDown, LogOut, UserIcon, UserPlus, Wallet, User, Settings } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,7 @@ import { WalletModal } from '@/components/WalletModal';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
 import { useNavigate } from 'react-router-dom';
+import { nip19 } from 'nostr-tools';
 
 interface AccountSwitcherProps {
   onAddAccountClick: () => void;
@@ -67,11 +68,11 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => navigate('/edit-profile')}
+          onClick={() => navigate(`/${nip19.npubEncode(currentUser.pubkey)}`)}
           className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
         >
-          <Edit className='w-4 h-4' />
-          <span>Edit Profile</span>
+          <User className='w-4 h-4' />
+          <span>My Profile</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => navigate('/settings')}

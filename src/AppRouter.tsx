@@ -14,6 +14,9 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { EditProfile } from "./pages/EditProfile";
 import { AppSettings } from "./pages/AppSettings";
 import { NIP19Page } from "./pages/NIP19Page";
+import { FriendsPage } from "./pages/FriendsPage";
+import { PicsPage } from "./pages/PicsPage";
+import { VideosPage } from "./pages/VideosPage";
 import NotFound from "./pages/NotFound";
 
 export function AppRouter() {
@@ -41,6 +44,10 @@ export function AppRouter() {
         <Route path="/artist/:artistId" element={<WavlakeArtist />} />
         <Route path="/album/:albumId" element={<WavlakeAlbum />} />
         <Route path="/wavlake/:trackId" element={<WavlakeTrack />} />
+        {/* Profile sub-pages */}
+        <Route path="/:npub/friends" element={<FriendsPage />} />
+        <Route path="/:npub/pics" element={<PicsPage />} />
+        <Route path="/:npub/videos" element={<VideosPage />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}
         <Route path="/:nip19" element={<NIP19Page />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
