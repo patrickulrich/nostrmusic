@@ -4,6 +4,7 @@ import { LoginArea } from "@/components/auth/LoginArea";
 import { TrackSuggestionNotifications } from "@/components/notifications/TrackSuggestionNotifications";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -37,12 +38,12 @@ export function Header({ onMenuClick, className }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
           
-          <a
-            href="/"
+          <Link
+            to="/"
             className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hover:opacity-80 transition-opacity"
           >
             NostrMusic
-          </a>
+          </Link>
         </div>
 
         {/* Spacer */}
