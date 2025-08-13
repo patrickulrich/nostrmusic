@@ -9,6 +9,7 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useToast } from '@/hooks/useToast';
 import { useMusicPlayer } from '@/hooks/useMusicPlayer';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useMusicStatus } from '@/hooks/useMusicStatus';
 import { 
   Play, 
   Pause, 
@@ -54,6 +55,7 @@ export function PersistentMusicPlayer() {
   const { mutate: createEvent } = useNostrPublish();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { publishMusicStatus, clearMusicStatus, isEnabled: isStatusEnabled } = useMusicStatus();
 
   // Audio event handlers
   const handleLoadStart = useCallback(() => {
@@ -79,17 +81,33 @@ export function PersistentMusicPlayer() {
     // Try to play if we should be playing and user has interacted
     if (isPlaying && hasUserInteracted && audioRef.current && audioRef.current.paused) {
       audioRef.current.play()
-        .then(() => console.log('Auto-play started successfully'))
+        .then(() => {
+          console.log('Auto-play started successfully');
+          // Publish music status when track starts playing
+          if (isStatusEnabled && currentTrack) {
+            const trackUrl = currentTrack.id ? `https://nostrmusic.com/wavlake/${currentTrack.id}` : undefined;
+            publishMusicStatus({
+              title: currentTrack.title,
+              artist: currentTrack.artist,
+              duration: duration || undefined,
+              url: trackUrl
+            });
+          }
+        })
         .catch((error) => console.log('Auto-play failed:', error.name));
     }
-  }, [isPlaying, hasUserInteracted]);
+  }, [isPlaying, hasUserInteracted, isStatusEnabled, currentTrack, duration, publishMusicStatus]);
 
   const handleEnded = useCallback(() => {
+    // Clear music status when track ends
+    if (isStatusEnabled) {
+      clearMusicStatus();
+    }
     // Auto-advance to next track if available
     if (playlist.length > 1) {
       nextTrack();
     }
-  }, [nextTrack, playlist.length]);
+  }, [nextTrack, playlist.length, isStatusEnabled, clearMusicStatus]);
 
   const handleError = useCallback(() => {
     setIsLoading(false);
@@ -122,13 +140,29 @@ export function PersistentMusicPlayer() {
       // Try to play if user has interacted
       if (audioRef.current.readyState >= 3) { // HAVE_FUTURE_DATA or higher
         audioRef.current.play()
-          .then(() => console.log('Audio playback started successfully'))
+          .then(() => {
+            console.log('Audio playback started successfully');
+            // Publish music status when track starts playing
+            if (isStatusEnabled && currentTrack) {
+              const trackUrl = currentTrack.id ? `https://nostrmusic.com/wavlake/${currentTrack.id}` : undefined;
+              publishMusicStatus({
+                title: currentTrack.title,
+                artist: currentTrack.artist,
+                duration: duration || undefined,
+                url: trackUrl
+              });
+            }
+          })
           .catch((error) => console.log('Audio playback failed:', error.name));
       }
     } else if (!isPlaying) {
       audioRef.current.pause();
+      // Clear music status when playback is paused
+      if (isStatusEnabled) {
+        clearMusicStatus();
+      }
     }
-  }, [isPlaying, hasUserInteracted, currentTrack?.title]);
+  }, [isPlaying, hasUserInteracted, currentTrack, duration, isStatusEnabled, publishMusicStatus, clearMusicStatus]);
 
   // Update audio source when track changes
   useEffect(() => {
@@ -196,6 +230,16 @@ export function PersistentMusicPlayer() {
         .then(() => {
           // Sync state only after successful play
           if (!isPlaying) togglePlay();
+          // Publish music status when user clicks play
+          if (isStatusEnabled && currentTrack) {
+            const trackUrl = currentTrack.id ? `https://nostrmusic.com/wavlake/${currentTrack.id}` : undefined;
+            publishMusicStatus({
+              title: currentTrack.title,
+              artist: currentTrack.artist,
+              duration: duration || undefined,
+              url: trackUrl
+            });
+          }
         })
         .catch((_error) => {
           // Fall back to state update for loading scenarios
@@ -203,8 +247,12 @@ export function PersistentMusicPlayer() {
         });
     } else {
       togglePlay(); // Just pause
+      // Clear music status when user clicks pause
+      if (isStatusEnabled) {
+        clearMusicStatus();
+      }
     }
-  }, [isPlaying, currentTrack, togglePlay, setHasUserInteracted]);
+  }, [isPlaying, currentTrack, togglePlay, setHasUserInteracted, isStatusEnabled, duration, publishMusicStatus, clearMusicStatus]);
 
   // Navigation handlers that mark user interaction
   const handleNextTrack = useCallback(() => {
@@ -216,6 +264,14 @@ export function PersistentMusicPlayer() {
     setHasUserInteracted(true);
     previousTrack();
   }, [previousTrack, setHasUserInteracted]);
+
+  const handleClosePlayer = useCallback(() => {
+    // Clear music status when closing the player
+    if (isStatusEnabled) {
+      clearMusicStatus();
+    }
+    closePlayer();
+  }, [closePlayer, isStatusEnabled, clearMusicStatus]);
 
   const handleVoteTrack = useCallback(() => {
     if (!user || !currentTrack) {
@@ -332,7 +388,7 @@ export function PersistentMusicPlayer() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={closePlayer}
+                  onClick={handleClosePlayer}
                   className="h-8 w-8 p-0"
                   title="Close player"
                 >
@@ -656,7 +712,7 @@ export function PersistentMusicPlayer() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={closePlayer}
+                onClick={handleClosePlayer}
                 className="h-8 w-8 p-0"
                 title="Close player"
               >

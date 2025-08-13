@@ -8,6 +8,7 @@ import { WavlakeZapDialog } from '@/components/music/WavlakeZapDialog';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useToast } from '@/hooks/useToast';
+import { useMusicStatus } from '@/hooks/useMusicStatus';
 import { 
   Play, 
   Pause, 
@@ -54,6 +55,7 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
   const { user } = useCurrentUser();
   const { mutateAsync: publishEvent } = useNostrPublish();
   const { toast } = useToast();
+  const { publishMusicStatus, clearMusicStatus, isEnabled: isStatusEnabled } = useMusicStatus();
 
   // Get media URL for playback from Wavlake API data
   const playbackUrl = track.mediaUrl;
@@ -133,6 +135,10 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleEnded = () => {
       setIsPlaying(false);
+      // Clear music status when track ends
+      if (isStatusEnabled) {
+        clearMusicStatus();
+      }
       if (onNext) onNext();
     };
 
@@ -149,7 +155,7 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [onNext]);
+  }, [onNext, isStatusEnabled, clearMusicStatus]);
 
   // Auto-play when track changes (if autoPlay is enabled)
   useEffect(() => {
@@ -160,6 +166,16 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
       try {
         await audio.play();
         setIsPlaying(true);
+        // Publish music status when auto-play starts
+        if (isStatusEnabled && track) {
+          const trackUrl = track.id ? `https://nostrmusic.com/wavlake/${track.id}` : undefined;
+          publishMusicStatus({
+            title: track.title,
+            artist: track.artist,
+            duration: track.duration || undefined,
+            url: trackUrl
+          });
+        }
       } catch (error) {
         console.error('Auto-play failed:', error);
         // Auto-play might be blocked by browser policy
@@ -169,7 +185,7 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
     // Wait a brief moment for the audio to load
     const timer = setTimeout(playAudio, 100);
     return () => clearTimeout(timer);
-  }, [track.id, autoPlay, playbackUrl]);
+  }, [track.id, autoPlay, playbackUrl, isStatusEnabled, track, publishMusicStatus]);
 
   // Play/pause toggle
   const togglePlayPause = async () => {
@@ -180,9 +196,23 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
       if (isPlaying) {
         audio.pause();
         setIsPlaying(false);
+        // Clear music status when manually paused
+        if (isStatusEnabled) {
+          clearMusicStatus();
+        }
       } else {
         await audio.play();
         setIsPlaying(true);
+        // Publish music status when manually started
+        if (isStatusEnabled && track) {
+          const trackUrl = track.id ? `https://nostrmusic.com/wavlake/${track.id}` : undefined;
+          publishMusicStatus({
+            title: track.title,
+            artist: track.artist,
+            duration: track.duration || undefined,
+            url: trackUrl
+          });
+        }
       }
     } catch (error) {
       console.error('Playback error:', error);
