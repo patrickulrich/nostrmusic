@@ -12,6 +12,7 @@ export interface MusicPlayerState {
   playlist: MusicTrack[];
   currentIndex: number;
   isPlayerVisible: boolean;
+  hasUserInteracted: boolean;
 }
 
 export interface MusicPlayerActions {
@@ -28,6 +29,7 @@ export interface MusicPlayerActions {
   showPlayer: () => void;
   hidePlayer: () => void;
   updatePlaylist: (playlist: MusicTrack[], index?: number) => void;
+  setHasUserInteracted: (hasInteracted: boolean) => void;
 }
 
 export type MusicPlayerContextType = MusicPlayerState & MusicPlayerActions;

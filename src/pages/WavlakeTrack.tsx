@@ -6,9 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MusicPlayer } from '@/components/music/MusicPlayer';
-import { SuggestTrackModal } from '@/components/music/SuggestTrackModal';
-import { AddToPlaylistButton } from '@/components/music/AddToPlaylistButton';
+import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
+import { WavlakeZapDialog } from '@/components/music/WavlakeZapDialog';
 import { useWavlakeTrack } from '@/hooks/useWavlake';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
@@ -22,21 +21,20 @@ import {
   User,
   Album,
   Tag,
-  MessageCircle,
   ArrowLeft,
   Zap,
-  TrendingUp
+  TrendingUp,
+  Play
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-// Peachy's pubkey
-const PEACHY_PUBKEY = "0e7b8b91f952a3c994f51d2a69f0b62c778958aad855e10fef8813bc382ed820";
 
 const WavlakeTrack = () => {
   const { trackId } = useParams<{ trackId: string }>();
   const { user } = useCurrentUser();
   const { mutateAsync: publishEvent } = useNostrPublish();
   const { toast } = useToast();
+  const { playTrack, isTrackPlaying, isTrackCurrent } = useGlobalMusicPlayer();
   
   // For now, we'll use a placeholder hook until we implement the actual Wavlake API integration
   // TODO: Implement useWavlakeTrack hook to fetch track details from Wavlake API
@@ -99,9 +97,9 @@ const WavlakeTrack = () => {
         kind: 30003,
         content: '',
         tags: [
-          ['d', 'peachy-song-vote'], // Our specific identifier
-          ['title', 'Weekly Song Vote'],
-          ['description', 'My vote for the best song of the week'],
+          ['d', 'nostr-music-vote'], // Generic identifier for NostrMusic votes
+          ['title', 'Music Track Vote'],
+          ['description', 'My vote for this music track'],
           ['r', `https://wavlake.com/track/${trackData.id}`], // Reference to the Wavlake track
           ['track_title', trackData.title],
           ['track_artist', trackData.artist],
@@ -127,8 +125,8 @@ const WavlakeTrack = () => {
   }, [user, publishEvent, toast, trackData]);
 
   useSeoMeta({
-    title: trackData ? `${trackData.title || 'Unknown Track'} - ${trackData.artist || 'Unknown Artist'}` : 'Track',
-    description: trackData ? `Listen to "${trackData.title || 'Unknown Track'}" by ${trackData.artist || 'Unknown Artist'} on Peachy's Wavlake collection.` : 'Discover great Bitcoin music on Wavlake.',
+    title: trackData ? `${trackData.title || 'Unknown Track'} - ${trackData.artist || 'Unknown Artist'} | NostrMusic` : 'Track | NostrMusic',
+    description: trackData ? `Listen to "${trackData.title || 'Unknown Track'}" by ${trackData.artist || 'Unknown Artist'} on NostrMusic - Discover Bitcoin music on Nostr.` : 'Discover Bitcoin music on the decentralized Nostr network.',
   });
 
   const formatDuration = (seconds?: number) => {
@@ -190,11 +188,11 @@ const WavlakeTrack = () => {
       <MainLayout>
         <div className="container mx-auto px-4 py-8">
           <Link 
-            to="/wavlake-picks" 
+            to="/" 
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Wavlake Picks
+            Back to Music Discovery
           </Link>
 
           <div className="max-w-4xl mx-auto">
@@ -218,11 +216,11 @@ const WavlakeTrack = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Back navigation */}
         <Link 
-          to="/wavlake-picks" 
+          to="/" 
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Wavlake Picks
+          Back to Music Discovery
         </Link>
 
         <div className="max-w-4xl mx-auto space-y-8">
@@ -308,29 +306,34 @@ const WavlakeTrack = () => {
 
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-                    {user?.pubkey === PEACHY_PUBKEY ? (
-                      // Show "Add to Playlist" button for Peachy
-                      <AddToPlaylistButton 
-                        track={trackData}
+                    <Button 
+                      onClick={() => playTrack(trackData)}
+                      className="flex items-center gap-2"
+                      size="lg"
+                    >
+                      <Play className="h-4 w-4" />
+                      {isTrackCurrent(trackData.id) && isTrackPlaying(trackData.id) ? 'Playing' : 'Play Track'}
+                    </Button>
+
+                    <WavlakeZapDialog track={trackData}>
+                      <Button 
+                        variant="outline"
                         className="flex items-center gap-2"
-                      />
-                    ) : (
-                      // Show "Suggest to Peachy" button for everyone else
-                      <SuggestTrackModal track={trackData}>
-                        <Button className="flex items-center gap-2">
-                          <MessageCircle className="h-4 w-4" />
-                          Suggest to Peachy
-                        </Button>
-                      </SuggestTrackModal>
-                    )}
+                        size="lg"
+                      >
+                        <Zap className="h-4 w-4" />
+                        Zap Artist
+                      </Button>
+                    </WavlakeZapDialog>
 
                     <Button 
                       variant="outline"
                       onClick={handleVoteForTrack}
                       className="flex items-center gap-2"
+                      size="lg"
                     >
                       <Heart className="h-4 w-4" />
-                      Vote for Top Track
+                      Vote for Track
                     </Button>
                   </div>
                 </div>
@@ -338,11 +341,17 @@ const WavlakeTrack = () => {
             </CardContent>
           </Card>
 
-          {/* Music Player */}
-          <MusicPlayer
-            track={trackData}
-            autoPlay={false}
-          />
+          {/* Music Player Info */}
+          {isTrackCurrent(trackData.id) && (
+            <Card>
+              <CardContent className="py-4 px-6">
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Music className="h-4 w-4" />
+                  This track is {isTrackPlaying(trackData.id) ? 'currently playing' : 'loaded'} in the music player
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Track Description */}
           {trackData.description && (

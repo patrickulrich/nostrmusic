@@ -6,25 +6,37 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWavlakeArtist } from '@/hooks/useWavlake';
 import { Music, ExternalLink, Calendar, User, Play, Disc3 } from 'lucide-react';
-import { MusicTrack } from '@/hooks/useMusicLists';
-import { MusicPlayer } from '@/components/music/MusicPlayer';
-import { useState } from 'react';
+import { useSeoMeta } from '@unhead/react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';
 
 export default function WavlakeArtist() {
   const { artistId } = useParams<{ artistId: string }>();
   const { data: artist, isLoading, error } = useWavlakeArtist(artistId);
-  const [_selectedTrack, _setSelectedTrack] = useState<MusicTrack | null>(null);
   
   // Get Nostr profile if artistNpub is available
   const author = useAuthor(artist?.artistNpub);
   const nostrProfile = author.data?.metadata;
 
+  // SEO metadata
+  useSeoMeta({
+    title: artist ? `${artist.name} | NostrMusic` : 'Artist | NostrMusic',
+    description: artist ? `Listen to music by ${artist.name} on NostrMusic - Discover Bitcoin music on Nostr.` : 'Discover Bitcoin music artists on the decentralized Nostr network.',
+  });
+
   if (isLoading) {
     return (
       <MainLayout>
         <div className="container mx-auto px-4 py-8">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Music Discovery
+          </Link>
+
           <Card>
             <CardHeader>
               <div className="flex items-center gap-6">
@@ -46,6 +58,14 @@ export default function WavlakeArtist() {
     return (
       <MainLayout>
         <div className="container mx-auto px-4 py-8">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Music Discovery
+          </Link>
+
           <Card>
             <CardContent className="p-8 text-center">
               <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -63,6 +83,14 @@ export default function WavlakeArtist() {
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
+        <Link 
+          to="/" 
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Music Discovery
+        </Link>
+
         <div className="space-y-6">
           {/* Artist Profile */}
           <Card>
@@ -218,14 +246,6 @@ export default function WavlakeArtist() {
             </CardContent>
           </Card>
 
-          {/* Music Player */}
-          {_selectedTrack && (
-            <Card>
-              <CardContent className="p-6">
-                <MusicPlayer track={_selectedTrack} />
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </MainLayout>

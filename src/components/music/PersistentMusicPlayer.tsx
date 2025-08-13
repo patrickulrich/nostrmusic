@@ -19,8 +19,7 @@ import {
   Zap,
   Heart,
   X,
-  Music,
-  ChevronUp
+  Music
 } from 'lucide-react';
 
 export function PersistentMusicPlayer() {
@@ -38,6 +37,7 @@ export function PersistentMusicPlayer() {
     isPlayerVisible,
     playlist,
     currentIndex,
+    hasUserInteracted,
     togglePlay, 
     nextTrack, 
     previousTrack, 
@@ -46,7 +46,8 @@ export function PersistentMusicPlayer() {
     setVolume, 
     toggleMute, 
     setIsLoading,
-    closePlayer 
+    closePlayer,
+    setHasUserInteracted
   } = useMusicPlayer();
 
   const { user } = useCurrentUser();
@@ -75,28 +76,13 @@ export function PersistentMusicPlayer() {
   }, [setCurrentTime]);
 
   const handleCanPlay = useCallback(() => {
-    console.log('Audio can start playing');
-    // If we're supposed to be playing but aren't yet, start playing
-    if (isPlaying && audioRef.current && audioRef.current.paused) {
-      const playPromise = audioRef.current.play();
-      console.log('Auto-starting playback after canplay event');
-      playPromise
-        .then(() => {
-          console.log('Auto-play started successfully');
-        })
-        .catch((error) => {
-          console.error('Auto-play failed:', error);
-          if (error.name !== 'AbortError') {
-            setIsLoading(false);
-            toast({
-              title: "Playback Error",
-              description: `Failed to load "${currentTrack?.title || 'the audio track'}". Please try again.`,
-              variant: "destructive",
-            });
-          }
-        });
+    // Try to play if we should be playing and user has interacted
+    if (isPlaying && hasUserInteracted && audioRef.current && audioRef.current.paused) {
+      audioRef.current.play()
+        .then(() => console.log('Auto-play started successfully'))
+        .catch((error) => console.log('Auto-play failed:', error.name));
     }
-  }, [isPlaying, setIsLoading, toast, currentTrack?.title]);
+  }, [isPlaying, hasUserInteracted]);
 
   const handleEnded = useCallback(() => {
     // Auto-advance to next track if available
@@ -127,38 +113,22 @@ export function PersistentMusicPlayer() {
   useEffect(() => {
     if (!audioRef.current) return;
 
-    console.log('Sync audio state - isPlaying:', isPlaying, 'readyState:', audioRef.current.readyState);
+    if (isPlaying && !audioRef.current.paused) {
+      // Already playing, do nothing
+      return;
+    }
 
-    if (isPlaying) {
-      // Only try to play if audio is ready or wait for it to be ready
+    if (isPlaying && hasUserInteracted) {
+      // Try to play if user has interacted
       if (audioRef.current.readyState >= 3) { // HAVE_FUTURE_DATA or higher
-        const playPromise = audioRef.current.play();
-        console.log('Attempting to play audio...');
-        playPromise
-          .then(() => {
-            console.log('Audio playback started successfully');
-          })
-          .catch((error) => {
-            console.error('Play promise rejected:', error);
-            // Only handle non-AbortError cases - inline error handling to avoid circular deps
-            if (error.name !== 'AbortError') {
-              setIsLoading(false);
-              toast({
-                title: "Playback Error",
-                description: `Failed to load "${currentTrack?.title || 'the audio track'}". Please try again.`,
-                variant: "destructive",
-              });
-            }
-          });
-      } else {
-        console.log('Audio not ready yet, waiting for canplay event');
-        // Audio will auto-play when ready due to onCanPlay handler below
+        audioRef.current.play()
+          .then(() => console.log('Audio playback started successfully'))
+          .catch((error) => console.log('Audio playback failed:', error.name));
       }
-    } else {
-      console.log('Pausing audio');
+    } else if (!isPlaying) {
       audioRef.current.pause();
     }
-  }, [isPlaying, setIsLoading, toast, currentTrack?.title]);
+  }, [isPlaying, hasUserInteracted, currentTrack?.title]);
 
   // Update audio source when track changes
   useEffect(() => {
@@ -191,13 +161,6 @@ export function PersistentMusicPlayer() {
     console.log('Setting audio source to:', mediaUrl);
     audioRef.current.src = mediaUrl;
     audioRef.current.load();
-    
-    // Log the audio element's ready state
-    setTimeout(() => {
-      if (audioRef.current) {
-        console.log('Audio ready state:', audioRef.current.readyState, 'Network state:', audioRef.current.networkState);
-      }
-    }, 100);
   }, [currentTrack, setIsLoading, toast]);
 
   // Update volume
@@ -217,6 +180,42 @@ export function PersistentMusicPlayer() {
   const handleVolumeChange = useCallback((value: number[]) => {
     setVolume(value[0]);
   }, [setVolume]);
+
+  // Simple mobile-friendly toggle play
+  const handleTogglePlay = useCallback(() => {
+    setHasUserInteracted(true);
+    
+    if (!audioRef.current || !currentTrack) {
+      togglePlay();
+      return;
+    }
+
+    if (!isPlaying) {
+      // ALWAYS try to play immediately on user click for mobile compatibility
+      audioRef.current.play()
+        .then(() => {
+          // Sync state only after successful play
+          if (!isPlaying) togglePlay();
+        })
+        .catch((_error) => {
+          // Fall back to state update for loading scenarios
+          togglePlay();
+        });
+    } else {
+      togglePlay(); // Just pause
+    }
+  }, [isPlaying, currentTrack, togglePlay, setHasUserInteracted]);
+
+  // Navigation handlers that mark user interaction
+  const handleNextTrack = useCallback(() => {
+    setHasUserInteracted(true);
+    nextTrack();
+  }, [nextTrack, setHasUserInteracted]);
+
+  const handlePreviousTrack = useCallback(() => {
+    setHasUserInteracted(true);
+    previousTrack();
+  }, [previousTrack, setHasUserInteracted]);
 
   const handleVoteTrack = useCallback(() => {
     if (!user || !currentTrack) {
@@ -304,7 +303,7 @@ export function PersistentMusicPlayer() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={togglePlay}
+                  onClick={handleTogglePlay}
                   disabled={isLoading}
                   className="h-10 w-10 p-0"
                 >
@@ -317,15 +316,18 @@ export function PersistentMusicPlayer() {
                   )}
                 </Button>
 
-                {/* Expand/Collapse button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronUp className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                </Button>
+                {/* Next Track button */}
+                {hasNavigation && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNextTrack}
+                    className="h-8 w-8 p-0"
+                    title="Next track"
+                  >
+                    <SkipForward className="h-4 w-4" />
+                  </Button>
+                )}
 
                 <Button
                   variant="ghost"
@@ -394,7 +396,7 @@ export function PersistentMusicPlayer() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={previousTrack}
+                          onClick={handlePreviousTrack}
                           className="h-8 w-8 p-0"
                         >
                           <SkipBack className="h-4 w-4" />
@@ -402,7 +404,7 @@ export function PersistentMusicPlayer() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={nextTrack}
+                          onClick={handleNextTrack}
                           className="h-8 w-8 p-0"
                         >
                           <SkipForward className="h-4 w-4" />
@@ -465,6 +467,28 @@ export function PersistentMusicPlayer() {
                 </div>
               </div>
             )}
+
+            {/* Hidden Audio Element for Mobile */}
+            <audio
+              ref={audioRef}
+              onLoadStart={handleLoadStart}
+              onLoadedData={handleLoadedData}
+              onLoadedMetadata={() => console.log('Audio metadata loaded')}
+              onCanPlay={handleCanPlay}
+              onCanPlayThrough={() => console.log('Audio can play through without buffering')}
+              onPlay={() => console.log('Audio play event fired')}
+              onPlaying={() => console.log('Audio is now playing')}
+              onPause={() => console.log('Audio paused')}
+              onTimeUpdate={handleTimeUpdate}
+              onEnded={handleEnded}
+              onError={handleError}
+              onStalled={() => console.log('Audio stalled')}
+              onSuspend={() => console.log('Audio suspended')}
+              onWaiting={() => console.log('Audio waiting for data')}
+              onAbort={() => console.log('Audio loading aborted')}
+              preload="metadata"
+              style={{ display: 'none' }}
+            />
           </CardContent>
         </Card>
       </div>
@@ -521,44 +545,49 @@ export function PersistentMusicPlayer() {
 
             {/* Center: Controls, Scrubber, and Volume */}
             <div className="flex items-center gap-3 flex-1 justify-center max-w-2xl">
-              {/* Navigation Controls */}
-              {hasNavigation && (
-                <div className="flex items-center gap-1">
+              {/* Media Controls */}
+              <div className="flex items-center gap-1">
+                {/* Previous Track */}
+                {hasNavigation && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={previousTrack}
+                    onClick={handlePreviousTrack}
                     className="h-8 w-8 p-0"
                   >
                     <SkipBack className="h-4 w-4" />
                   </Button>
+                )}
+
+                {/* Play/Pause Control */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleTogglePlay}
+                  disabled={isLoading}
+                  className="h-10 w-10 p-0"
+                >
+                  {isLoading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  ) : isPlaying ? (
+                    <Pause className="h-4 w-4" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </Button>
+
+                {/* Next Track */}
+                {hasNavigation && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={nextTrack}
+                    onClick={handleNextTrack}
                     className="h-8 w-8 p-0"
                   >
                     <SkipForward className="h-4 w-4" />
                   </Button>
-                </div>
-              )}
-
-              {/* Play Control */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={togglePlay}
-                disabled={isLoading}
-                className="h-10 w-10 p-0"
-              >
-                {isLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                ) : isPlaying ? (
-                  <Pause className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4" />
                 )}
-              </Button>
+              </div>
 
               {/* Progress Bar */}
               <div className="flex items-center gap-2 flex-1 max-w-md">

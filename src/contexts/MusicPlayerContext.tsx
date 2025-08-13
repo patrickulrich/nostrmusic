@@ -17,6 +17,7 @@ const initialState: MusicPlayerState = {
   playlist: [],
   currentIndex: 0,
   isPlayerVisible: false,
+  hasUserInteracted: false,
 };
 
 interface MusicPlayerProviderProps {
@@ -43,6 +44,7 @@ export function MusicPlayerProvider({ children }: MusicPlayerProviderProps) {
       playlist: playlist.length > 0 ? playlist : [track],
       currentIndex: playlist.length > 0 ? index : 0,
       isPlayerVisible: true,
+      hasUserInteracted: true, // Mark user interaction when playing a track
     }));
   }, []);
 
@@ -157,6 +159,13 @@ export function MusicPlayerProvider({ children }: MusicPlayerProviderProps) {
     }));
   }, []);
 
+  const setHasUserInteracted = useCallback((hasInteracted: boolean) => {
+    setState(prev => ({
+      ...prev,
+      hasUserInteracted: hasInteracted,
+    }));
+  }, []);
+
   const contextValue: MusicPlayerContextType = {
     ...state,
     playTrack,
@@ -172,6 +181,7 @@ export function MusicPlayerProvider({ children }: MusicPlayerProviderProps) {
     showPlayer,
     hidePlayer,
     updatePlaylist,
+    setHasUserInteracted,
   };
 
   return (
