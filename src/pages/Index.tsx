@@ -27,15 +27,16 @@ import {
   Play,
   MessageCircle,
   Heart,
-  Radio
+  Radio,
+  Zap
 } from 'lucide-react';
 import type { MusicTrack } from '@/hooks/useMusicLists';
 import type { WavlakeTrack } from '@/lib/wavlake';
 import { wavlakeAPI } from '@/lib/wavlake';
 import { Link } from 'react-router-dom';
 import { useGlobalMusicPlayer } from '@/hooks/useGlobalMusicPlayer';
-import { SuggestTrackModal } from '@/components/music/SuggestTrackModal';
 import { SuggestTrackModalControlled } from '@/components/music/SuggestTrackModalControlled';
+import { WavlakeZapDialog } from '@/components/music/WavlakeZapDialog';
 
 // Peachy's pubkey
 const PEACHY_PUBKEY = "0e7b8b91f952a3c994f51d2a69f0b62c778958aad855e10fef8813bc382ed820";
@@ -496,15 +497,15 @@ const Index = () => {
                                   >
                                     <Heart className="h-3 w-3" />
                                   </Button>
-                                  <SuggestTrackModal track={musicTrack}>
+                                  <WavlakeZapDialog track={musicTrack}>
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      title="Suggest to Peachy"
+                                      title="Zap artist"
                                     >
-                                      <MessageCircle className="h-3 w-3" />
+                                      <Zap className="h-3 w-3" />
                                     </Button>
-                                  </SuggestTrackModal>
+                                  </WavlakeZapDialog>
                                   {isPeachy && (
                                     <Button
                                       size="sm"
@@ -544,15 +545,15 @@ const Index = () => {
                                 >
                                   <Heart className="h-3 w-3" />
                                 </Button>
-                                <SuggestTrackModal track={musicTrack}>
+                                <WavlakeZapDialog track={musicTrack}>
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    title="Suggest to Peachy"
+                                    title="Zap artist"
                                   >
-                                    <MessageCircle className="h-3 w-3" />
+                                    <Zap className="h-3 w-3" />
                                   </Button>
-                                </SuggestTrackModal>
+                                </WavlakeZapDialog>
                                 {isPeachy && (
                                   <Button
                                     size="sm"
@@ -830,6 +831,212 @@ const Index = () => {
                           </div>
                         )}
                       </>
+                    )}
+
+                    {/* Artist Drill-Down View */}
+                    {drillDownMode === 'artist' && artistData && (
+                      <div className="space-y-6">
+                        {/* Artist Header */}
+                        <div className="flex items-center gap-6 p-4 bg-muted/30 rounded-lg">
+                          <div className="w-24 h-24 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                            {artistData.artistArtUrl ? (
+                              <img 
+                                src={artistData.artistArtUrl} 
+                                alt={artistData.name} 
+                                className="w-full h-full object-cover" 
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <User className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h2 className="text-2xl font-bold mb-2">{artistData.name}</h2>
+                            {artistData.bio && (
+                              <p className="text-muted-foreground line-clamp-2">{artistData.bio}</p>
+                            )}
+                            <div className="mt-3">
+                              <Badge variant="secondary">
+                                {artistData.albums?.length || 0} albums
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Artist's Albums */}
+                        <div>
+                          <h3 className="font-semibold mb-3 flex items-center gap-2">
+                            <Disc3 className="h-5 w-5" />
+                            Albums
+                          </h3>
+                          <div className="grid gap-3">
+                            {artistData.albums && artistData.albums.length > 0 ? (
+                              artistData.albums.map((album) => (
+                                <div key={album.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-accent transition-colors">
+                                  <div className="w-16 h-16 bg-muted rounded overflow-hidden">
+                                    {album.albumArtUrl ? (
+                                      <img 
+                                        src={album.albumArtUrl} 
+                                        alt={album.title} 
+                                        className="w-full h-full object-cover" 
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                        <Disc3 className="h-8 w-8 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1">
+                                    <h4 className="font-medium">{album.title}</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      Released: {new Date(album.releaseDate).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleSelectAlbum(album.id)}
+                                  >
+                                    <Disc3 className="h-3 w-3 mr-1" />
+                                    View Album
+                                  </Button>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-muted-foreground text-center py-4">
+                                No albums found for this artist.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Album Drill-Down View */}
+                    {drillDownMode === 'album' && albumData && (
+                      <div className="space-y-6">
+                        {/* Album Header */}
+                        <div className="flex items-center gap-6 p-4 bg-muted/30 rounded-lg">
+                          <div className="w-32 h-32 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                            {albumData.albumArtUrl ? (
+                              <img 
+                                src={albumData.albumArtUrl} 
+                                alt={albumData.title} 
+                                className="w-full h-full object-cover" 
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Disc3 className="h-16 w-16 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h2 className="text-2xl font-bold mb-2">{albumData.title}</h2>
+                            <p className="text-lg text-muted-foreground mb-1">{albumData.artist}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Released: {new Date(albumData.releaseDate).toLocaleDateString()}
+                            </p>
+                            <div className="mt-3">
+                              <Badge variant="secondary">
+                                {albumData.tracks?.length || 0} tracks
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Album Tracks */}
+                        <div>
+                          <h3 className="font-semibold mb-3 flex items-center gap-2">
+                            <Music className="h-5 w-5" />
+                            Tracks
+                          </h3>
+                          <div className="space-y-2">
+                            {albumData.tracks && albumData.tracks.length > 0 ? (
+                              albumData.tracks.map((track, index) => {
+                                const musicTrack = convertToMusicTrack(track);
+                                const isCurrentTrack = currentTrack?.id === track.id;
+                                const trackIsPlaying = isCurrentTrack && isPlaying;
+                                
+                                return (
+                                  <div key={track.id} className={`flex items-center gap-4 p-3 rounded-lg hover:bg-accent transition-colors ${
+                                    isCurrentTrack ? 'bg-primary/10' : ''
+                                  }`}>
+                                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-medium text-primary">
+                                      {track.order || index + 1}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <Link
+                                        to={`/wavlake/${track.id}`}
+                                        className={`font-medium line-clamp-1 hover:underline block ${isCurrentTrack ? 'text-primary' : 'hover:text-primary'}`}
+                                      >
+                                        {track.title}
+                                      </Link>
+                                      <p className="text-sm text-muted-foreground">
+                                        {track.artist}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {track.duration && (
+                                        <Badge variant="outline" className="text-xs">
+                                          {Math.floor(track.duration / 60)}:{String(track.duration % 60).padStart(2, '0')}
+                                        </Badge>
+                                      )}
+                                      <Button
+                                        size="sm"
+                                        variant={trackIsPlaying ? "default" : "outline"}
+                                        onClick={() => playTrack(musicTrack, albumData.tracks.map(convertToMusicTrack))}
+                                      >
+                                        {trackIsPlaying ? (
+                                          <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                          <Play className="h-3 w-3" />
+                                        )}
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost"
+                                        onClick={() => handleVoteForTrack(musicTrack)}
+                                        title="Vote for this song"
+                                      >
+                                        <Heart className="h-3 w-3" />
+                                      </Button>
+                                      <WavlakeZapDialog track={musicTrack}>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          title="Zap artist"
+                                        >
+                                          <Zap className="h-3 w-3" />
+                                        </Button>
+                                      </WavlakeZapDialog>
+                                      {isPeachy && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => addTrackToPicks(musicTrack)}
+                                          disabled={addingTrackIds.has(track.id)}
+                                          title="Add to picks"
+                                        >
+                                          {addingTrackIds.has(track.id) ? (
+                                            <div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                          ) : (
+                                            <Plus className="h-3 w-3" />
+                                          )}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <p className="text-muted-foreground text-center py-4">
+                                No tracks found for this album.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
