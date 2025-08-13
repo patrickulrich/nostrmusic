@@ -135,11 +135,15 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleEnded = () => {
       setIsPlaying(false);
-      // Clear music status when track ends
-      if (isStatusEnabled) {
-        clearMusicStatus();
+      if (onNext) {
+        onNext();
+        // Note: Status will be updated when the new track starts playing
+      } else {
+        // Clear music status only when no next track
+        if (isStatusEnabled) {
+          clearMusicStatus();
+        }
       }
-      if (onNext) onNext();
     };
 
     audio.addEventListener('loadstart', handleLoadStart);
@@ -186,6 +190,19 @@ export const MusicPlayer = forwardRef<MusicPlayerRef, MusicPlayerProps>(({ track
     const timer = setTimeout(playAudio, 100);
     return () => clearTimeout(timer);
   }, [track.id, autoPlay, playbackUrl, isStatusEnabled, track, publishMusicStatus]);
+
+  // Publish music status when track changes and is playing
+  useEffect(() => {
+    if (isStatusEnabled && track && isPlaying) {
+      const trackUrl = track.id ? `https://nostrmusic.com/wavlake/${track.id}` : undefined;
+      publishMusicStatus({
+        title: track.title,
+        artist: track.artist,
+        duration: track.duration || undefined,
+        url: trackUrl
+      });
+    }
+  }, [track.id, isStatusEnabled, isPlaying, publishMusicStatus]);
 
   // Play/pause toggle
   const togglePlayPause = async () => {

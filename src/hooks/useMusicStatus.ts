@@ -59,8 +59,6 @@ export function useMusicStatus() {
       tags.push(['expiration', expirationTime.toString()]);
     }
 
-    // Add alt tag for NIP-31 compatibility
-    tags.push(['alt', `Listening to Wavlake on NostrMusic.com: ${content}`]);
 
     try {
       await createEvent({

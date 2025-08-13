@@ -99,13 +99,15 @@ export function PersistentMusicPlayer() {
   }, [isPlaying, hasUserInteracted, isStatusEnabled, currentTrack, duration, publishMusicStatus]);
 
   const handleEnded = useCallback(() => {
-    // Clear music status when track ends
-    if (isStatusEnabled) {
-      clearMusicStatus();
-    }
     // Auto-advance to next track if available
     if (playlist.length > 1) {
       nextTrack();
+      // Note: Status will be updated when the new track starts playing
+    } else {
+      // Clear music status only when no more tracks to play
+      if (isStatusEnabled) {
+        clearMusicStatus();
+      }
     }
   }, [nextTrack, playlist.length, isStatusEnabled, clearMusicStatus]);
 
@@ -202,6 +204,19 @@ export function PersistentMusicPlayer() {
     if (!audioRef.current) return;
     audioRef.current.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
+
+  // Publish music status when track changes and is playing
+  useEffect(() => {
+    if (isStatusEnabled && currentTrack && isPlaying && hasUserInteracted) {
+      const trackUrl = currentTrack.id ? `https://nostrmusic.com/wavlake/${currentTrack.id}` : undefined;
+      publishMusicStatus({
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        duration: duration || undefined,
+        url: trackUrl
+      });
+    }
+  }, [currentTrack?.id, isStatusEnabled, isPlaying, hasUserInteracted, duration, publishMusicStatus]);
 
   const handleSeek = useCallback((value: number[]) => {
     const newTime = value[0];
