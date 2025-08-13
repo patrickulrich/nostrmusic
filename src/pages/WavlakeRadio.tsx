@@ -181,8 +181,8 @@ export default function WavlakeRadio() {
         </Button>
       </div>
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
+      {/* Main content area - Account for player height when radio is started */}
+      <div className={`flex-1 flex flex-col items-center justify-center p-8 ${isRadioStarted ? 'pb-32' : ''}`}>
         {!isRadioStarted ? (
           // Setup screen
           <div className="max-w-lg w-full space-y-8">
@@ -259,10 +259,11 @@ export default function WavlakeRadio() {
             </Card>
           </div>
         ) : (
-          // Radio playing screen
-          <div className="max-w-4xl w-full space-y-8">
-            {/* Now Playing Card */}
-            <Card className="border-primary/20 bg-primary/5">
+          // Radio playing screen - wrapped in flex container for centering
+          <div className="flex flex-col items-center justify-center w-full">
+            <div className="max-w-4xl w-full space-y-8">
+              {/* Now Playing Card */}
+              <Card className="border-primary/20 bg-primary/5">
               <CardContent className="p-8">
                 <div className="flex flex-col md:flex-row items-center gap-6">
                   {/* Album Art */}
@@ -347,6 +348,7 @@ export default function WavlakeRadio() {
                 Change Station
               </Button>
             </div>
+          </div>
           </div>
         )}
       </div>
